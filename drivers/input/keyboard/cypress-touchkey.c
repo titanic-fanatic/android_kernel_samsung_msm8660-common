@@ -851,12 +851,14 @@ static void sec_touchkey_early_resume(struct early_suspend *h)
 #if defined (CONFIG_EUR_MODEL_GT_I9210) || defined(CONFIG_USA_MODEL_SGH_I577) || defined(CONFIG_CAN_MODEL_SGH_I577R) || defined (CONFIG_USA_MODEL_SGH_T769) || defined (CONFIG_USA_MODEL_SGH_T989)
  	int ret =0;
 #endif
+        mutex_lock(&touchkey_driver->mutex);
 
 	set_touchkey_debug('R');
 	printk(KERN_DEBUG "[TKEY] sec_touchkey_early_resume\n");
 
 	if (touchkey_enable < 0) {
 		printk("[TKEY] %s touchkey_enable: %d\n", __FUNCTION__, touchkey_enable);
+                mutex_unlock(&touchkey_driver->mutex);
 		return;
 	}
 
@@ -1556,7 +1558,9 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 	} else
 		printk("touch_led_control Error\n");
 
+#if defined(CONFIG_KOR_MODEL_SHV_E160L)
 unlock:
+#endif
 	mutex_unlock(&touchkey_driver->mutex);
 	return size;
 }

@@ -91,7 +91,7 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 	} else {
 		map_buffer->alloc_handle = ion_alloc(
 			    cctxt->vcd_ion_client, sz, SZ_4K,
-			    memtype);
+			    memtype, res_trk_get_ion_flags());
 		if (!map_buffer->alloc_handle) {
 			pr_err("%s() ION alloc failed", __func__);
 			goto bailout;
@@ -104,8 +104,7 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 		}
 		*kernel_vaddr = (u8 *) ion_map_kernel(
 				cctxt->vcd_ion_client,
-				map_buffer->alloc_handle,
-				ionflag);
+				map_buffer->alloc_handle);
 		if (!(*kernel_vaddr)) {
 			pr_err("%s() ION map failed", __func__);
 			goto ion_free_bailout;
@@ -2491,7 +2490,26 @@ u32 vcd_handle_first_fill_output_buffer_for_enc(
 			if (!cctxt->secure) {
 				prop_hdr.prop_id = VCD_I_SEQ_HEADER;
 				prop_hdr.sz = sizeof(struct vcd_sequence_hdr);
-				seq_hdr.sequence_header = frm_entry->virtual;
+				if (vcd_get_ion_status()) {
+					kernel_vaddr = (u8 *)ion_map_kernel(
+						cctxt->vcd_ion_client,
+						frm_entry->buff_ion_handle);
+					if (IS_ERR_OR_NULL(kernel_vaddr)) {
+						VCD_MSG_ERROR("%s: 0x%x = "\
+						"ion_map_kernel(0x%x, 0x%x) fail",
+						__func__,
+						(u32)kernel_vaddr,
+						(u32)cctxt->vcd_ion_client,
+						(u32)frm_entry->
+						buff_ion_handle);
+						return VCD_ERR_FAIL;
+					}
+				} else {
+					VCD_MSG_ERROR("%s: ION status is NULL",
+						__func__);
+					return VCD_ERR_FAIL;
+				}
+				seq_hdr.sequence_header = kernel_vaddr;
 				seq_hdr.sequence_header_len =
 					frm_entry->alloc_len;
 				rc = ddl_get_property(cctxt->ddl_handle,
@@ -2543,6 +2561,16 @@ u32 vcd_handle_first_fill_output_buffer_for_enc(
 		VCD_MSG_ERROR(
 			"rc = 0x%x. Failed: ddl_get_property:VCD_I_CODEC",
 			rc);
+	if (kernel_vaddr) {
+		if (!IS_ERR_OR_NULL(frm_entry->buff_ion_handle)) {
+			ion_map_kernel(cctxt->vcd_ion_client,
+				frm_entry->buff_ion_handle);
+		} else {
+			VCD_MSG_ERROR("%s: Invalid ion_handle (0x%x)",
+				__func__, (u32)frm_entry->buff_ion_handle);
+			rc = VCD_ERR_FAIL;
+		}
+	}
 	return rc;
 }
 

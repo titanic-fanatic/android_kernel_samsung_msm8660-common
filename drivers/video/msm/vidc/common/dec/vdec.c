@@ -813,6 +813,207 @@ static u32 vid_dec_set_idr_only_decoding(struct video_client_ctx *client_ctx)
 		return false;
 	return true;
 }
+static u32 vid_dec_set_meta_buffers(struct video_client_ctx *client_ctx,
+					struct vdec_meta_buffers *meta_buffers)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	struct vcd_property_meta_buffer *vcd_meta_buffer = NULL;
+	struct msm_mapped_buffer *mapped_buffer = NULL;
+	struct msm_mapped_buffer *mapped_buffer_iommu = NULL;
+	u32 vcd_status = VCD_ERR_FAIL;
+	u32 len = 0, flags = 0, len_iommu = 0, flags_iommu = 0, buf_size = 0;
+	struct file *file, *file_iommu;
+	int rc = 0;
+	unsigned long ionflag = 0, ionflag_iommu = 0;
+	unsigned long buffer_size = 0, buffer_size_iommu = 0;
+	unsigned long iova = 0, iova_iommu = 0;
+	int index = -1, num_buffers = 0;
+	u8 *ker_vir_addr = NULL, *ker_vir_addr_iommu = NULL;
+
+	if (!client_ctx || !meta_buffers)
+		return false;
+
+	vcd_property_hdr.prop_id = VCD_I_SET_EXT_METABUFFER;
+	vcd_property_hdr.sz = sizeof(struct vcd_property_meta_buffer);
+	vcd_meta_buffer = &client_ctx->vcd_meta_buffer;
+
+	memset(&client_ctx->vcd_meta_buffer, 0,
+		   sizeof(struct vcd_property_meta_buffer));
+	vcd_meta_buffer->size = meta_buffers->size;
+	vcd_meta_buffer->count = meta_buffers->count;
+	vcd_meta_buffer->pmem_fd = meta_buffers->pmem_fd;
+	vcd_meta_buffer->offset = meta_buffers->offset;
+	vcd_meta_buffer->pmem_fd_iommu = meta_buffers->pmem_fd_iommu;
+
+	if (meta_buffers->count > MAX_META_BUFFERS) {
+		ERR("meta buffers maximum count reached, count = %d",
+			meta_buffers->count);
+		return false;
+	}
+
+	if (!vcd_get_ion_status()) {
+		if (get_pmem_file(vcd_meta_buffer->pmem_fd,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr)),
+				(unsigned long *) (&vcd_meta_buffer->
+							kernel_virtual_addr),
+				(unsigned long *) (&len), &file)) {
+				ERR("%s(): get_pmem_file failed\n", __func__);
+				return false;
+			}
+		put_pmem_file(file);
+		flags = MSM_SUBSYSTEM_MAP_IOVA;
+		mapped_buffer = msm_subsystem_map_buffer(
+			(unsigned long)vcd_meta_buffer->physical_addr,
+				len, flags, vidc_mmu_subsystem,
+				sizeof(vidc_mmu_subsystem)/
+				sizeof(unsigned int));
+		if (IS_ERR(mapped_buffer)) {
+			pr_err("buffer map failed");
+			return false;
+		}
+		vcd_meta_buffer->client_data = (void *) mapped_buffer;
+		vcd_meta_buffer->dev_addr =
+			(u8 *)mapped_buffer->iova[0];
+
+		if (get_pmem_file(vcd_meta_buffer->pmem_fd_iommu,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr_iommu)),
+				(unsigned long *) (&vcd_meta_buffer->
+				kernel_virt_addr_iommu),
+				(unsigned long *) (&len_iommu), &file_iommu)) {
+				ERR("%s(): get_pmem_file failed\n", __func__);
+				return false;
+			}
+		put_pmem_file(file_iommu);
+		flags_iommu = MSM_SUBSYSTEM_MAP_IOVA;
+		mapped_buffer_iommu = msm_subsystem_map_buffer(
+			(unsigned long)vcd_meta_buffer->physical_addr_iommu,
+				len_iommu, flags_iommu, vidc_mmu_subsystem,
+				sizeof(vidc_mmu_subsystem)/
+				sizeof(unsigned int));
+		if (IS_ERR(mapped_buffer_iommu)) {
+			pr_err("buffer map failed");
+			return false;
+		}
+		vcd_meta_buffer->client_data_iommu =
+					(void *) mapped_buffer_iommu;
+		vcd_meta_buffer->dev_addr_iommu =
+					(u8 *)mapped_buffer_iommu->iova[0];
+	} else {
+		client_ctx->meta_buffer_ion_handle = ion_import_dma_buf(
+					client_ctx->user_ion_client,
+					vcd_meta_buffer->pmem_fd);
+		if (IS_ERR_OR_NULL(client_ctx->meta_buffer_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->meta_buffer_ion_handle,
+					&ionflag);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_meta_buffer->kernel_virtual_addr =
+			(u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->meta_buffer_ion_handle);
+		if (!vcd_meta_buffer->kernel_virtual_addr) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		if (res_trk_check_for_sec_session() ||
+		   (res_trk_get_core_type() == (u32)VCD_CORE_720P)) {
+			rc = ion_phys(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr)), &len);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+					__func__);
+				goto ion_map_error;
+			}
+			vcd_meta_buffer->client_data = NULL;
+			vcd_meta_buffer->dev_addr = (u8 *)
+				vcd_meta_buffer->physical_addr;
+		} else {
+			rc = ion_map_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+				SZ_4K, 0, (unsigned long *)&iova,
+				(unsigned long *)&buffer_size,
+				0, 0);
+			if (rc || !iova) {
+				ERR("%s():get_ION_kernel physical addr fail,"\
+					" rc = %d iova = 0x%lx\n",
+					__func__, rc, iova);
+				goto ion_map_error;
+			}
+			vcd_meta_buffer->physical_addr = (u8 *) iova;
+			vcd_meta_buffer->client_data = NULL;
+			vcd_meta_buffer->dev_addr = (u8 *) iova;
+		}
+
+		client_ctx->meta_buffer_iommu_ion_handle = ion_import_dma_buf(
+					client_ctx->user_ion_client,
+					vcd_meta_buffer->pmem_fd_iommu);
+		if (IS_ERR_OR_NULL(client_ctx->meta_buffer_iommu_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->
+					meta_buffer_iommu_ion_handle,
+					&ionflag_iommu);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_meta_buffer->kernel_virt_addr_iommu =
+			(u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		if (!vcd_meta_buffer->kernel_virt_addr_iommu) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		if (res_trk_get_core_type() == (u32)VCD_CORE_720P) {
+			rc = ion_phys(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr_iommu)), &len_iommu);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+					__func__);
+				goto ion_map_error_iommu;
+			}
+			vcd_meta_buffer->client_data_iommu = NULL;
+			vcd_meta_buffer->dev_addr_iommu = (u8 *)
+				vcd_meta_buffer->physical_addr_iommu;
+		} else {
+			rc = ion_map_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+				SZ_4K, 0, (unsigned long *)&iova_iommu,
+				(unsigned long *)&buffer_size_iommu,
+				0, 0);
+			if (rc || !iova_iommu) {
+				ERR("%s():get_ION_kernel physical addr fail, "\
+					"rc = %d iova = 0x%lx\n",
+					__func__, rc, iova);
+				goto ion_map_error_iommu;
+			}
+			vcd_meta_buffer->physical_addr_iommu =
+						(u8 *) iova_iommu;
+			vcd_meta_buffer->client_data_iommu = NULL;
+			vcd_meta_buffer->dev_addr_iommu = (u8 *) iova_iommu;
+		}
+	}
 
 static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 					struct vdec_h264_mv *mv_data)
@@ -866,7 +1067,7 @@ static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 		vcd_h264_mv_buffer->client_data = (void *) mapped_buffer;
 		vcd_h264_mv_buffer->dev_addr = (u8 *)mapped_buffer->iova[0];
 	} else {
-		client_ctx->h264_mv_ion_handle = ion_import_fd(
+		client_ctx->h264_mv_ion_handle = ion_import_dma_buf(
 					client_ctx->user_ion_client,
 					vcd_h264_mv_buffer->pmem_fd);
 		if (!client_ctx->h264_mv_ion_handle) {
@@ -883,8 +1084,7 @@ static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 		}
 		vcd_h264_mv_buffer->kernel_virtual_addr = (u8 *) ion_map_kernel(
 			client_ctx->user_ion_client,
-			client_ctx->h264_mv_ion_handle,
-			ionflag);
+			client_ctx->h264_mv_ion_handle);
 		if (!vcd_h264_mv_buffer->kernel_virtual_addr) {
 			ERR("%s(): get_ION_kernel virtual addr failed\n",
 				 __func__);
@@ -1783,7 +1983,7 @@ static long vid_dec_ioctl(struct file *file,
 			}
 			put_pmem_file(pmem_file);
 		} else {
-			client_ctx->seq_hdr_ion_handle = ion_import_fd(
+			client_ctx->seq_hdr_ion_handle = ion_import_dma_buf(
 				client_ctx->user_ion_client,
 				seq_header.pmem_fd);
 			if (!client_ctx->seq_hdr_ion_handle) {
@@ -1802,8 +2002,8 @@ static long vid_dec_ioctl(struct file *file,
 			}
 			ker_vaddr = (unsigned long) ion_map_kernel(
 				client_ctx->user_ion_client,
-				client_ctx->seq_hdr_ion_handle, ionflag);
-			if (!ker_vaddr) {
+				client_ctx->seq_hdr_ion_handle);
+			if (IS_ERR_OR_NULL((void *)ker_vaddr)) {
 				ERR("%s():get_ION_kernel virtual addr fail\n",
 							 __func__);
 				ion_free(client_ctx->user_ion_client,

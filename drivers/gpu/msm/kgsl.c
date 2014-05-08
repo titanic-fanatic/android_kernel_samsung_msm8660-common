@@ -207,9 +207,6 @@ kgsl_mem_entry_destroy(struct kref *kref)
 	 */
 
 	if (entry->memtype == KGSL_MEM_ENTRY_ION) {
-#ifdef CONFIG_KGSL_COMPAT
-		ion_unmap_dma(kgsl_ion_client, entry->priv_data);
-#endif
 		entry->memdesc.sg = NULL;
 	}
 
@@ -750,20 +747,9 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	if (private->debug_root)
 		debugfs_remove_recursive(private->debug_root);
 
-	while (1) {
-		rcu_read_lock();
-		entry = idr_get_next(&private->mem_idr, &next);
-		rcu_read_unlock();
-		if (entry == NULL)
-			break;
-		kgsl_mem_entry_detach_process(entry);
-		/*
-		 * Always start back at the beginning, to
-		 * ensure all entries are removed,
-		 * like list_for_each_entry_safe.
-		 */
-		next = 0;
-	}
+	list_del(&private->list);
+	mutex_unlock(&kgsl_driver.process_mutex);
+
 	kgsl_mmu_putpagetable(private->pagetable);
 	idr_destroy(&private->mem_idr);
 
@@ -1904,20 +1890,12 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 {
 	struct ion_handle *handle;
 	struct scatterlist *s;
-#ifdef CONFIG_KGSL_COMPAT
-	unsigned long flags;
-#else
 	struct sg_table *sg_table;
-#endif
 
 	if (IS_ERR_OR_NULL(kgsl_ion_client))
 		return -ENODEV;
 
-#ifdef CONFIG_KGSL_COMPAT
-	handle = ion_import_fd(kgsl_ion_client, fd);
-#else
 	handle = ion_import_dma_buf(kgsl_ion_client, fd);
-#endif
 	if (IS_ERR(handle))
 		return PTR_ERR(handle);
 	else if (!handle)
@@ -1930,12 +1908,9 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	/* USE_CPU_MAP is not impemented for ION. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
 
-#ifdef CONFIG_KGSL_COMPAT
-	if (ion_handle_get_flags(kgsl_ion_client, handle, &flags))
-		goto err;
+	sg_table = ion_sg_table(kgsl_ion_client, handle);
 
-	entry->memdesc.sg = ion_map_dma(kgsl_ion_client, handle, flags);
-	if (IS_ERR_OR_NULL(entry->memdesc.sg))
+	if (IS_ERR_OR_NULL(sg_table))
 		goto err;
 #else
 	sg_table = ion_sg_table(kgsl_ion_client, handle);
@@ -1945,6 +1920,8 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 
 	entry->memdesc.sg = sg_table->sgl;
 #endif
+
+	entry->memdesc.sg = sg_table->sgl;
 
 	/* Calculate the size of the memdesc from the sglist */
 
@@ -2101,9 +2078,6 @@ error_put_file_ptr:
 			fput(entry->priv_data);
 		break;
 	case KGSL_MEM_ENTRY_ION:
-#ifdef CONFIG_KGSL_COMPAT
-		ion_unmap_dma(kgsl_ion_client, entry->priv_data);
-#endif
 		ion_free(kgsl_ion_client, entry->priv_data);
 		break;
 	default:

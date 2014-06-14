@@ -354,119 +354,21 @@ struct survey_info {
 };
 
 /**
- * struct cfg80211_crypto_settings - Crypto settings
- * @wpa_versions: indicates which, if any, WPA versions are enabled
- *	(from enum nl80211_wpa_versions)
- * @cipher_group: group key cipher suite (or 0 if unset)
- * @n_ciphers_pairwise: number of AP supported unicast ciphers
- * @ciphers_pairwise: unicast key cipher suites
- * @n_akm_suites: number of AKM suites
- * @akm_suites: AKM suites
- * @control_port: Whether user space controls IEEE 802.1X port, i.e.,
- *	sets/clears %NL80211_STA_FLAG_AUTHORIZED. If true, the driver is
- *	required to assume that the port is unauthorized until authorized by
- *	user space. Otherwise, port is marked authorized by default.
- * @control_port_ethertype: the control port protocol that should be
- *	allowed through even on unauthorized ports
- * @control_port_no_encrypt: TRUE to prevent encryption of control port
- *	protocol frames.
- */
-struct cfg80211_crypto_settings {
-	u32 wpa_versions;
-	u32 cipher_group;
-	int n_ciphers_pairwise;
-	u32 ciphers_pairwise[NL80211_MAX_NR_CIPHER_SUITES];
-	int n_akm_suites;
-	u32 akm_suites[NL80211_MAX_NR_AKM_SUITES];
-	bool control_port;
-	__be16 control_port_ethertype;
-	bool control_port_no_encrypt;
-};
-
-/**
- * struct cfg80211_beacon_data - beacon data
+ * struct beacon_parameters - beacon parameters
+ *
+ * Used to configure the beacon for an interface.
+ *
  * @head: head portion of beacon (before TIM IE)
  *     or %NULL if not changed
  * @tail: tail portion of beacon (after TIM IE)
  *     or %NULL if not changed
  * @head_len: length of @head
  * @tail_len: length of @tail
- * @beacon_ies: extra information element(s) to add into Beacon frames or %NULL
- * @beacon_ies_len: length of beacon_ies in octets
- * @proberesp_ies: extra information element(s) to add into Probe Response
- *	frames or %NULL
- * @proberesp_ies_len: length of proberesp_ies in octets
- * @assocresp_ies: extra information element(s) to add into (Re)Association
- *	Response frames or %NULL
- * @assocresp_ies_len: length of assocresp_ies in octets
- * @probe_resp_len: length of probe response template (@probe_resp)
- * @probe_resp: probe response template (AP mode only)
  */
-struct cfg80211_beacon_data {
-	const u8 *head, *tail;
-	const u8 *beacon_ies;
-	const u8 *proberesp_ies;
-	const u8 *assocresp_ies;
-	const u8 *probe_resp;
-
-	size_t head_len, tail_len;
-	size_t beacon_ies_len;
-	size_t proberesp_ies_len;
-	size_t assocresp_ies_len;
-	size_t probe_resp_len;
-};
-
-struct mac_address {
-	u8 addr[ETH_ALEN];
-};
-
-/**
- * struct cfg80211_acl_data - Access control list data
- *
- * @acl_policy: ACL policy to be applied on the station's
- *	entry specified by mac_addr
- * @n_acl_entries: Number of MAC address entries passed
- * @mac_addrs: List of MAC addresses of stations to be used for ACL
- */
-struct cfg80211_acl_data {
-	enum nl80211_acl_policy acl_policy;
-	int n_acl_entries;
-
-	/* Keep it last */
-	struct mac_address mac_addrs[];
-};
-
-/**
- * struct cfg80211_ap_settings - AP configuration
- *
- * Used to configure an AP interface.
- *
- * @beacon: beacon data
- * @beacon_interval: beacon interval
- * @dtim_period: DTIM period
- * @ssid: SSID to be used in the BSS (note: may be %NULL if not provided from
- *	user space)
- * @ssid_len: length of @ssid
- * @hidden_ssid: whether to hide the SSID in Beacon/Probe Response frames
- * @crypto: crypto settings
- * @privacy: the BSS uses privacy
- * @auth_type: Authentication type (algorithm)
- * @inactivity_timeout: time in seconds to determine station's inactivity.
- * @acl: ACL configuration used by the drivers which has support for
- *	MAC address based access control
- */
-struct cfg80211_ap_settings {
-	struct cfg80211_beacon_data beacon;
-
-	int beacon_interval, dtim_period;
-	const u8 *ssid;
-	size_t ssid_len;
-	enum nl80211_hidden_ssid hidden_ssid;
-	struct cfg80211_crypto_settings crypto;
-	bool privacy;
-	enum nl80211_auth_type auth_type;
-	int inactivity_timeout;
-	const struct cfg80211_acl_data *acl;
+struct beacon_parameters {
+	u8 *head, *tail;
+	int interval, dtim_period;
+	int head_len, tail_len;
 };
 
 /**
@@ -970,7 +872,6 @@ struct cfg80211_ssid {
  * @wiphy: the wiphy this was for
  * @dev: the interface
  * @aborted: (internal) scan request was notified as aborted
- * @no_cck: used to send probe requests at non CCK rate in 2GHz band
  */
 struct cfg80211_scan_request {
 	struct cfg80211_ssid *ssids;
@@ -985,7 +886,6 @@ struct cfg80211_scan_request {
 	struct wiphy *wiphy;
 	struct net_device *dev;
 	bool aborted;
-	bool no_cck;
 
 	/* keep last */
 	struct ieee80211_channel *channels[0];
@@ -1010,8 +910,8 @@ struct cfg80211_match_set {
  * @ie: optional information element(s) to add into Probe Request or %NULL
  * @ie_len: length of ie in octets
  * @match_sets: sets of parameters to be matched for a scan result
- * 	entry to be considered valid and to be passed to the host
- * 	(others are filtered out).
+ *	entry to be considered valid and to be passed to the host
+ *	(others are filtered out).
  *	If ommited, all results are passed.
  * @n_match_sets: number of match sets
  * @wiphy: the wiphy this was for
@@ -1101,6 +1001,36 @@ struct cfg80211_bss {
  */
 const u8 *ieee80211_bss_get_ie(struct cfg80211_bss *bss, u8 ie);
 
+
+/**
+ * struct cfg80211_crypto_settings - Crypto settings
+ * @wpa_versions: indicates which, if any, WPA versions are enabled
+ *	(from enum nl80211_wpa_versions)
+ * @cipher_group: group key cipher suite (or 0 if unset)
+ * @n_ciphers_pairwise: number of AP supported unicast ciphers
+ * @ciphers_pairwise: unicast key cipher suites
+ * @n_akm_suites: number of AKM suites
+ * @akm_suites: AKM suites
+ * @control_port: Whether user space controls IEEE 802.1X port, i.e.,
+ *	sets/clears %NL80211_STA_FLAG_AUTHORIZED. If true, the driver is
+ *	required to assume that the port is unauthorized until authorized by
+ *	user space. Otherwise, port is marked authorized by default.
+ * @control_port_ethertype: the control port protocol that should be
+ *	allowed through even on unauthorized ports
+ * @control_port_no_encrypt: TRUE to prevent encryption of control port
+ *	protocol frames.
+ */
+struct cfg80211_crypto_settings {
+	u32 wpa_versions;
+	u32 cipher_group;
+	int n_ciphers_pairwise;
+	u32 ciphers_pairwise[NL80211_MAX_NR_CIPHER_SUITES];
+	int n_akm_suites;
+	u32 akm_suites[NL80211_MAX_NR_AKM_SUITES];
+	bool control_port;
+	__be16 control_port_ethertype;
+	bool control_port_no_encrypt;
+};
 
 /**
  * struct cfg80211_auth_request - Authentication request data
@@ -1380,21 +1310,6 @@ struct cfg80211_gtk_rekey_data {
 };
 
 /**
- * struct cfg80211_update_ft_ies_params - FT IE Information
- *
- * This structure provides information needed to update the fast transition IE
- *
- * @md: The Mobility Domain ID, 2 Octet value
- * @ie: Fast Transition IEs
- * @ie_len: Length of ft_ie in octets
- */
-struct cfg80211_update_ft_ies_params {
-	u16 md;
-	const u8 *ie;
-	size_t ie_len;
-};
-
-/**
  * struct cfg80211_ops - backend description for wireless configuration
  *
  * This struct is registered by fullmac card drivers and/or wireless stacks
@@ -1440,10 +1355,12 @@ struct cfg80211_update_ft_ies_params {
  *
  * @set_rekey_data: give the data necessary for GTK rekeying to the driver
  *
- * @start_ap: Start acting in AP mode defined by the parameters.
- * @change_beacon: Change the beacon parameters for an access point mode
- *	interface. This should reject the call when AP mode wasn't started.
- * @stop_ap: Stop being an AP, including stopping beaconing.
+ * @add_beacon: Add a beacon with given parameters, @head, @interval
+ *	and @dtim_period will be valid, @tail is optional.
+ * @set_beacon: Change the beacon parameters for an access point mode
+ *	interface. This should reject the call when no beacon has been
+ *	configured.
+ * @del_beacon: Remove beacon configuration and stop sending the beacon.
  *
  * @add_station: Add a new station.
  * @del_station: Remove a station; @mac may be NULL to remove all stations.
@@ -1576,15 +1493,6 @@ struct cfg80211_update_ft_ies_params {
  *
  * @probe_client: probe an associated client, must return a cookie that it
  *	later passes to cfg80211_probe_status().
- *
- * @set_noack_map: Set the NoAck Map for the TIDs.
- * @set_mac_acl: Sets MAC address control list in AP and P2P GO mode.
- *	Parameters include ACL policy, an array of MAC address of stations
- *	and the number of MAC addresses. If there is already a list in driver
- *	this new list replaces the existing one. Driver has to clear its ACL
- *	when number of MAC addresses entries is passed as 0. Drivers which
- *	advertise the support for MAC based ACL have to implement this callback.
- *
  */
 struct cfg80211_ops {
 	int	(*suspend)(struct wiphy *wiphy, struct cfg80211_wowlan *wow);
@@ -1775,17 +1683,6 @@ struct cfg80211_ops {
 
 	int	(*probe_client)(struct wiphy *wiphy, struct net_device *dev,
 				const u8 *peer, u64 *cookie);
-
-	int	(*set_noack_map)(struct wiphy *wiphy,
-				  struct net_device *dev,
-				  u16 noack_map);
-
-	struct ieee80211_channel *(*get_channel)(struct wiphy *wiphy);
-	int	(*update_ft_ies)(struct wiphy *wiphy, struct net_device *dev,
-				 struct cfg80211_update_ft_ies_params *ftie);
-
-	int (*set_mac_acl)(struct wiphy *wiphy, struct net_device *dev,
-			   const struct cfg80211_acl_data *params);
 };
 
 /*
@@ -1856,10 +1753,6 @@ struct cfg80211_ops {
  * @WIPHY_FLAG_REPORTS_OBSS: the device will report beacons from other BSSes
  *	when there are virtual interfaces in AP mode by calling
  *	cfg80211_report_obss_beacon().
- * @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD: When operating as an AP, the device
- *	responds to probe-requests in hardware.
- * @WIPHY_FLAG_OFFCHAN_TX: Device supports direct off-channel TX.
- * @WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL: Device supports remain-on-channel call.
  */
 enum wiphy_flags {
 	WIPHY_FLAG_CUSTOM_REGULATORY		= BIT(0),
@@ -1880,37 +1773,6 @@ enum wiphy_flags {
 	WIPHY_FLAG_TDLS_EXTERNAL_SETUP		= BIT(16),
 	WIPHY_FLAG_HAVE_AP_SME			= BIT(17),
 	WIPHY_FLAG_REPORTS_OBSS			= BIT(18),
-	WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD	= BIT(19),
-	WIPHY_FLAG_OFFCHAN_TX			= BIT(20),
-	WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL	= BIT(21),
-};
-
-/**
- * enum nl80211_country_ie_pref - country IE processing preferences
- *
- * enumerates the different preferences a 802.11 card can advertize
- * for parsing the country IEs. As per the current implementation
- * country IEs are only used derive the apha2, the information
- * for power settings that comes with the country IE is ignored
- * and we use the power settings from regdb.
- *
- * @NL80211_COUNTRY_IE_FOLLOW_CORE - This is the default behaviour.
- *	It allows the core to update channel flags according to the
- *	ISO3166-alpha2 in the country IE. The applied power is -
- *	MIN(power specified by custom domain, power obtained from regdb)
- * @NL80211_COUNTRY_IE_FOLLOW_POWER - for devices that have a
- *	preference that even though they may have programmed their own
- *	custom power setting prior to wiphy registration, they want
- *	to ensure their channel power settings are updated for this
- *	connection with the power settings derived from alpha2 of the
- *	country IE.
- * @NL80211_COUNTRY_IE_IGNORE_CORE - for devices that have a preference to
- *	to ignore all country IE information processed by the core.
- */
-enum nl80211_country_ie_pref {
-	NL80211_COUNTRY_IE_FOLLOW_CORE,
-	NL80211_COUNTRY_IE_FOLLOW_POWER,
-	NL80211_COUNTRY_IE_IGNORE_CORE,
 };
 
 /**
@@ -2125,13 +1987,6 @@ struct wiphy_wowlan_support {
  * @wowlan: WoWLAN support information
  *
  * @ap_sme_capa: AP SME capabilities, flags from &enum nl80211_ap_sme_features.
- * @ht_capa_mod_mask:  Specify what ht_cap values can be over-ridden.
- *	If null, then none can be over-ridden.
- *
- * @max_acl_mac_addrs: Maximum number of MAC addresses that the device
- *	supports for ACL.
- * @country_ie_pref: country IE processing preferences specified
- *	by enum nl80211_country_ie_pref
  */
 struct wiphy {
 	/* assign these fields before you register the wiphy */
@@ -2156,6 +2011,8 @@ struct wiphy {
 	u16 max_acl_mac_addrs;
 
 	u32 flags, features;
+
+	u32 ap_sme_capa;
 
 	u32 ap_sme_capa;
 
@@ -3424,22 +3281,6 @@ bool cfg80211_rx_spurious_frame(struct net_device *dev,
 				const u8 *addr, gfp_t gfp);
 
 /**
- * cfg80211_rx_unexpected_4addr_frame - inform about unexpected WDS frame
- * @dev: The device the frame matched to
- * @addr: the transmitter address
- * @gfp: context flags
- *
- * This function is used in AP mode (only!) to inform userspace that
- * an associated station sent a 4addr frame but that wasn't expected.
- * It is allowed and desirable to send this event only once for each
- * station to avoid event flooding.
- * Returns %true if the frame was passed to userspace (or this failed
- * for a reason other than not having a subscription.)
- */
-bool cfg80211_rx_unexpected_4addr_frame(struct net_device *dev,
-					const u8 *addr, gfp_t gfp);
-
-/**
  * cfg80211_probe_status - notify userspace about probe status
  * @dev: the device the probe was sent on
  * @addr: the address of the peer
@@ -3456,7 +3297,6 @@ void cfg80211_probe_status(struct net_device *dev, const u8 *addr,
  * @frame: the frame
  * @len: length of the frame
  * @freq: frequency the frame was received on
- * @sig_dbm: signal strength in mBm, or 0 if unknown
  * @gfp: allocation flags
  *
  * Use this function to report to userspace when a beacon was
@@ -3465,77 +3305,7 @@ void cfg80211_probe_status(struct net_device *dev, const u8 *addr,
  */
 void cfg80211_report_obss_beacon(struct wiphy *wiphy,
 				 const u8 *frame, size_t len,
-				 int freq, int sig_dbm, gfp_t gfp);
-
-/*
- * cfg80211_can_beacon_sec_chan - test if ht40 on extension channel can be used
- * @wiphy: the wiphy
- * @chan: main channel
- * @channel_type: HT mode
- */
-int cfg80211_can_beacon_sec_chan(struct wiphy *wiphy,
-				 struct ieee80211_channel *chan,
-				 enum nl80211_channel_type channel_type);
-
-/*
- * cfg80211_tdls_oper_request - request userspace to perform TDLS operation
- * @dev: the device on which the operation is requested
- * @peer: the MAC address of the peer device
- * @oper: the requested TDLS operation (NL80211_TDLS_SETUP or
- *	NL80211_TDLS_TEARDOWN)
- * @reason_code: the reason code for teardown request
- * @gfp: allocation flags
- *
- * This function is used to request userspace to perform TDLS operation that
- * requires knowledge of keys, i.e., link setup or teardown when the AP
- * connection uses encryption. This is optional mechanism for the driver to use
- * if it can automatically determine when a TDLS link could be useful (e.g.,
- * based on traffic and signal strength for a peer).
- */
-void cfg80211_tdls_oper_request(struct net_device *dev, const u8 *peer,
-				enum nl80211_tdls_operation oper,
-				u16 reason_code, gfp_t gfp);
-
-/*
- * cfg80211_calculate_bitrate - calculate actual bitrate (in 100Kbps units)
- * @rate: given rate_info to calculate bitrate from
- *
- * return 0 if MCS index >= 32
- */
-u16 cfg80211_calculate_bitrate(struct rate_info *rate);
-
-/**
- * struct cfg80211_ft_event - FT Information Elements
- * @ies: FT IEs
- * @ies_len: length of the FT IE in bytes
- * @target_ap: target AP's MAC address
- * @ric_ies: RIC IE
- * @ric_ies_len: length of the RIC IE in bytes
- */
-struct cfg80211_ft_event_params {
-	const u8 *ies;
-	size_t ies_len;
-	const u8 *target_ap;
-	const u8 *ric_ies;
-	size_t ric_ies_len;
-};
-
-/**
- * cfg80211_ft_event - notify userspace about FT IE and RIC IE
- * @netdev: network device
- * @ft_event: IE information
- */
-void cfg80211_ft_event(struct net_device *netdev,
-		       struct cfg80211_ft_event_params *ft_event);
-
-
-
-/**
- * cfg80211_ap_stopped - notify userspace that AP mode stopped
- * @netdev: network device
- * @gfp: context flags
- */
-void cfg80211_ap_stopped(struct net_device *netdev, gfp_t gfp);
+				 int freq, gfp_t gfp);
 
 /* Logging, debugging and troubleshooting/diagnostic helpers. */
 

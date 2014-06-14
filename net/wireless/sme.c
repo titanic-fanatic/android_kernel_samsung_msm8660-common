@@ -118,13 +118,12 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 			bands = wdev->wiphy->bands[band];
 			if (!bands)
 				continue;
-			for (j = 0; j < bands->n_channels; j++) {
-				channel = &bands->channels[j];
-				if (channel->flags & IEEE80211_CHAN_DISABLED)
-					continue;
-				request->channels[i++] = channel;
-			}
-			request->rates[band] = (1 << bands->n_bitrates) - 1;
+			for (j = 0; j < wdev->wiphy->bands[band]->n_channels;
+			     i++, j++)
+				request->channels[i] =
+					&wdev->wiphy->bands[band]->channels[j];
+			request->rates[band] =
+				(1 << wdev->wiphy->bands[band]->n_bitrates) - 1;
 		}
 		n_channels = i;
 	}

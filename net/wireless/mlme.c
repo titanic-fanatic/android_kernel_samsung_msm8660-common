@@ -105,6 +105,25 @@ void __cfg80211_send_deauth(struct net_device *dev,
 		cfg80211_put_bss(&wdev->current_bss->pub);
 		wdev->current_bss = NULL;
 		was_current = true;
+	} else for (i = 0; i < MAX_AUTH_BSSES; i++) {
+		if (wdev->auth_bsses[i] &&
+		    memcmp(wdev->auth_bsses[i]->pub.bssid, bssid, ETH_ALEN) == 0) {
+			cfg80211_unhold_bss(wdev->auth_bsses[i]);
+			cfg80211_put_bss(&wdev->auth_bsses[i]->pub);
+			wdev->auth_bsses[i] = NULL;
+			found = true;
+			break;
+		}
+		if (wdev->authtry_bsses[i] &&
+		    memcmp(wdev->authtry_bsses[i]->pub.bssid, bssid,
+			   ETH_ALEN) == 0 &&
+		    memcmp(mgmt->sa, dev->dev_addr, ETH_ALEN) == 0) {
+			cfg80211_unhold_bss(wdev->authtry_bsses[i]);
+			cfg80211_put_bss(&wdev->authtry_bsses[i]->pub);
+			wdev->authtry_bsses[i] = NULL;
+			found = true;
+			break;
+		}
 	}
 
 	nl80211_send_deauth(rdev, dev, buf, len, GFP_KERNEL);
@@ -940,17 +959,3 @@ bool cfg80211_rx_spurious_frame(struct net_device *dev,
 	return nl80211_unexpected_frame(dev, addr, gfp);
 }
 EXPORT_SYMBOL(cfg80211_rx_spurious_frame);
-
-bool cfg80211_rx_unexpected_4addr_frame(struct net_device *dev,
-					const u8 *addr, gfp_t gfp)
-{
-	struct wireless_dev *wdev = dev->ieee80211_ptr;
-
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_AP &&
-		    wdev->iftype != NL80211_IFTYPE_P2P_GO &&
-		    wdev->iftype != NL80211_IFTYPE_AP_VLAN))
-		return false;
-
-	return nl80211_unexpected_4addr_frame(dev, addr, gfp);
-}
-EXPORT_SYMBOL(cfg80211_rx_unexpected_4addr_frame);

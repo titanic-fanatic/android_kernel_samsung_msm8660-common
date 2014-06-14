@@ -156,26 +156,14 @@
  * @NL80211_CMD_DEL_KEY: delete a key identified by %NL80211_ATTR_KEY_IDX
  *	or %NL80211_ATTR_MAC.
  *
- * @NL80211_CMD_GET_BEACON: (not used)
- * @NL80211_CMD_SET_BEACON: change the beacon on an access point interface
- *	using the %NL80211_ATTR_BEACON_HEAD and %NL80211_ATTR_BEACON_TAIL
- *	attributes. For drivers that generate the beacon and probe responses
- *	internally, the following attributes must be provided: %NL80211_ATTR_IE,
- *	%NL80211_ATTR_IE_PROBE_RESP and %NL80211_ATTR_IE_ASSOC_RESP.
- * @NL80211_CMD_START_AP: Start AP operation on an AP interface, parameters
- *	are like for %NL80211_CMD_SET_BEACON, and additionally parameters that
- *	do not change are used, these include %NL80211_ATTR_BEACON_INTERVAL,
- *	%NL80211_ATTR_DTIM_PERIOD, %NL80211_ATTR_SSID,
- *	%NL80211_ATTR_HIDDEN_SSID, %NL80211_ATTR_CIPHERS_PAIRWISE,
- *	%NL80211_ATTR_CIPHER_GROUP, %NL80211_ATTR_WPA_VERSIONS,
- *	%NL80211_ATTR_AKM_SUITES, %NL80211_ATTR_PRIVACY,
- *	%NL80211_ATTR_AUTH_TYPE and %NL80211_ATTR_INACTIVITY_TIMEOUT.
- *	%NL80211_ATTR_ACL_POLICY and %NL80211_ATTR_MAC_ADDRS.
- *	The channel to use can be set on the interface or be given using the
- *	%NL80211_ATTR_WIPHY_FREQ and the attributes determining channel width.
- * @NL80211_CMD_NEW_BEACON: old alias for %NL80211_CMD_START_AP
- * @NL80211_CMD_STOP_AP: Stop AP operation on the given interface
- * @NL80211_CMD_DEL_BEACON: old alias for %NL80211_CMD_STOP_AP
+ * @NL80211_CMD_GET_BEACON: retrieve beacon information (returned in a
+ *	%NL80222_CMD_NEW_BEACON message)
+ * @NL80211_CMD_SET_BEACON: set the beacon on an access point interface
+ *	using the %NL80211_ATTR_BEACON_INTERVAL, %NL80211_ATTR_DTIM_PERIOD,
+ *	%NL80211_ATTR_BEACON_HEAD and %NL80211_ATTR_BEACON_TAIL attributes.
+ * @NL80211_CMD_NEW_BEACON: add a new beacon to an access point interface,
+ *	parameters are like for %NL80211_CMD_SET_BEACON.
+ * @NL80211_CMD_DEL_BEACON: remove the beacon, stop sending it
  *
  * @NL80211_CMD_GET_STATION: Get station attributes for station identified by
  *	%NL80211_ATTR_MAC on the interface identified by %NL80211_ATTR_IFINDEX.
@@ -517,12 +505,6 @@
  *	of PMKSA caching dandidates.
  *
  * @NL80211_CMD_TDLS_OPER: Perform a high-level TDLS command (e.g. link setup).
- *     In addition, this can be used as an event to request userspace to take
- *     actions on TDLS links (set up a new link or tear down an existing one).
- *     In such events, %NL80211_ATTR_TDLS_OPERATION indicates the requested
- *     operation, %NL80211_ATTR_MAC contains the peer MAC address, and
- *     %NL80211_ATTR_REASON_CODE the reason code to be used (only with
- *     %NL80211_TDLS_TEARDOWN).
  * @NL80211_CMD_TDLS_MGMT: Send a TDLS management frame.
  *
  * @NL80211_CMD_UNEXPECTED_FRAME: Used by an application controlling an AP
@@ -533,13 +515,7 @@
  *	For the event, the %NL80211_ATTR_MAC attribute carries the TA and
  *	other attributes like the interface index are present.
  *	If used as the command it must have an interface index and you can
- *	only unsubscribe from the event by closing the socket. Subscription
- *	is also for %NL80211_CMD_UNEXPECTED_4ADDR_FRAME events.
- *
- * @NL80211_CMD_UNEXPECTED_4ADDR_FRAME: Sent as an event indicating that the
- *	associated station identified by %NL80211_ATTR_MAC sent a 4addr frame
- *	and wasn't already in a 4-addr VLAN. The event will be sent similarly
- *	to the %NL80211_CMD_UNEXPECTED_FRAME event, to the same listener.
+ *	only unsubscribe from the event by closing the socket.
  *
  * @NL80211_CMD_PROBE_CLIENT: Probe an associated station on an AP interface
  *	by sending a null data frame to it and reporting when the frame is
@@ -553,67 +529,6 @@
  *	other BSSes when any interfaces are in AP mode. This helps implement
  *	OLBC handling in hostapd. Beacons are reported in %NL80211_CMD_FRAME
  *	messages. Note that per PHY only one application may register.
- *
- * @NL80211_CMD_SET_NOACK_MAP: sets a bitmap for the individual TIDs whether
- *      No Acknowledgement Policy should be applied.
- *
- * @NL80211_CMD_CH_SWITCH_NOTIFY: An AP or GO may decide to switch channels
- *	independently of the userspace SME, send this event indicating
- *	%NL80211_ATTR_IFINDEX is now on %NL80211_ATTR_WIPHY_FREQ and the
- *	attributes determining channel width.
- *
- * @NL80211_CMD_START_P2P_DEVICE: Start the given P2P Device, identified by
- *	its %NL80211_ATTR_WDEV identifier. It must have been created with
- *	%NL80211_CMD_NEW_INTERFACE previously. After it has been started, the
- *	P2P Device can be used for P2P operations, e.g. remain-on-channel and
- *	public action frame TX.
- * @NL80211_CMD_STOP_P2P_DEVICE: Stop the given P2P Device, identified by
- *	its %NL80211_ATTR_WDEV identifier.
- *
- * @NL80211_CMD_CONN_FAILED: connection request to an AP failed; used to
- *	notify userspace that AP has rejected the connection request from a
- *	station, due to particular reason. %NL80211_ATTR_CONN_FAILED_REASON
- *	is used for this.
- *
- * @NL80211_CMD_SET_MCAST_RATE: Change the rate used to send multicast frames
- *	for IBSS or MESH vif.
- *
- * @NL80211_CMD_SET_MAC_ACL: sets ACL for MAC address based access control.
- *	This is to be used with the drivers advertising the support of MAC
- *	address based access control. List of MAC addresses is passed in
- *	%NL80211_ATTR_MAC_ADDRS and ACL policy is passed in
- *	%NL80211_ATTR_ACL_POLICY. Driver will enable ACL with this list, if it
- *	is not already done. The new list will replace any existing list. Driver
- *	will clear its ACL when the list of MAC addresses passed is empty. This
- *	command is used in AP/P2P GO mode. Driver has to make sure to clear its
- *	ACL list during %NL80211_CMD_STOP_AP.
- *
- * @NL80211_CMD_RADAR_DETECT: Start a Channel availability check (CAC). Once
- *	a radar is detected or the channel availability scan (CAC) has finished
- *	or was aborted, or a radar was detected, usermode will be notified with
- *	this event. This command is also used to notify userspace about radars
- *	while operating on this channel.
- *	%NL80211_ATTR_RADAR_EVENT is used to inform about the type of the
- *	event.
- *
- * @NL80211_CMD_GET_PROTOCOL_FEATURES: Get global nl80211 protocol features,
- *	i.e. features for the nl80211 protocol rather than device features.
- *	Returns the features in the %NL80211_ATTR_PROTOCOL_FEATURES bitmap.
- *
- * @NL80211_CMD_UPDATE_FT_IES: Pass down the most up-to-date Fast Transition
- *	Information Element to the WLAN driver
- *
- * @NL80211_CMD_FT_EVENT: Send a Fast transition event from the WLAN driver
- *	to the supplicant. This will carry the target AP's MAC address along
- *	with the relevant Information Elements. This event is used to report
- *	received FT IEs (MDIE, FTIE, RSN IE, TIE, RICIE).
- *
- * @NL80211_CMD_CRIT_PROTOCOL_START: Indicates user-space will start running
- *	a critical protocol that needs more reliability in the connection to
- *	complete.
- *
- * @NL80211_CMD_CRIT_PROTOCOL_STOP: Indicates the connection reliability can
- *	return back to normal.
  *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
@@ -751,32 +666,6 @@ enum nl80211_commands {
 	NL80211_CMD_PROBE_CLIENT,
 
 	NL80211_CMD_REGISTER_BEACONS,
-
-	NL80211_CMD_UNEXPECTED_4ADDR_FRAME,
-
-	NL80211_CMD_SET_NOACK_MAP,
-
-
-	NL80211_CMD_CH_SWITCH_NOTIFY,
-
-	NL80211_CMD_START_P2P_DEVICE,
-	NL80211_CMD_STOP_P2P_DEVICE,
-
-	NL80211_CMD_CONN_FAILED,
-
-	NL80211_CMD_SET_MCAST_RATE,
-
-	NL80211_CMD_SET_MAC_ACL,
-
-	NL80211_CMD_RADAR_DETECT,
-
-	NL80211_CMD_GET_PROTOCOL_FEATURES,
-
-	NL80211_CMD_UPDATE_FT_IES,
-	NL80211_CMD_FT_EVENT,
-
-	NL80211_CMD_CRIT_PROTOCOL_START,
-	NL80211_CMD_CRIT_PROTOCOL_STOP,
 
 	/* add new commands above here */
 
@@ -1008,20 +897,18 @@ enum nl80211_commands {
  * @NL80211_ATTR_STATUS_CODE: StatusCode for the %NL80211_CMD_CONNECT
  *	event (u16)
  * @NL80211_ATTR_PRIVACY: Flag attribute, used with connect(), indicating
- *	that protected APs should be used. This is also used with NEW_BEACON to
- *	indicate that the BSS is to use protection.
+ *	that protected APs should be used.
  *
- * @NL80211_ATTR_CIPHERS_PAIRWISE: Used with CONNECT, ASSOCIATE, and NEW_BEACON
- *	to indicate which unicast key ciphers will be used with the connection
+ * @NL80211_ATTR_CIPHERS_PAIRWISE: Used with CONNECT and ASSOCIATE to
+ *	indicate which unicast key ciphers will be used with the connection
  *	(an array of u32).
- * @NL80211_ATTR_CIPHER_GROUP: Used with CONNECT, ASSOCIATE, and NEW_BEACON to
- *	indicate which group key cipher will be used with the connection (a
- *	u32).
- * @NL80211_ATTR_WPA_VERSIONS: Used with CONNECT, ASSOCIATE, and NEW_BEACON to
- *	indicate which WPA version(s) the AP we want to associate with is using
+ * @NL80211_ATTR_CIPHER_GROUP: Used with CONNECT and ASSOCIATE to indicate
+ *	which group key cipher will be used with the connection (a u32).
+ * @NL80211_ATTR_WPA_VERSIONS: Used with CONNECT and ASSOCIATE to indicate
+ *	which WPA version(s) the AP we want to associate with is using
  *	(a u32 with flags from &enum nl80211_wpa_versions).
- * @NL80211_ATTR_AKM_SUITES: Used with CONNECT, ASSOCIATE, and NEW_BEACON to
- *	indicate which key management algorithm(s) to use (an array of u32).
+ * @NL80211_ATTR_AKM_SUITES: Used with CONNECT and ASSOCIATE to indicate
+ *	which key management algorithm(s) to use (an array of u32).
  *
  * @NL80211_ATTR_REQ_IE: (Re)association request information elements as
  *	sent out by the card, for ROAM and successful CONNECT events.
@@ -1429,6 +1316,43 @@ enum nl80211_commands {
  *	allowed to be used with the first @NL80211_CMD_SET_STATION command to
  *	update a TDLS peer STA entry.
  *
+ * @NL80211_ATTR_STA_WME: Nested attribute containing the wme configuration
+ *	of the station, see &enum nl80211_sta_wme_attr.
+ * @NL80211_ATTR_SUPPORT_AP_UAPSD: the device supports uapsd when working
+ *	as AP.
+ *
+ * @NL80211_ATTR_ROAM_SUPPORT: Indicates whether the firmware is capable of
+ *	roaming to another AP in the same ESS if the signal lever is low.
+ *
+ * @NL80211_ATTR_PMKSA_CANDIDATE: Nested attribute containing the PMKSA caching
+ *	candidate information, see &enum nl80211_pmksa_candidate_attr.
+ *
+ * @NL80211_ATTR_TX_NO_CCK_RATE: Indicates whether to use CCK rate or not
+ *	for management frames transmission. In order to avoid p2p probe/action
+ *	frames are being transmitted at CCK rate in 2GHz band, the user space
+ *	applications use this attribute.
+ *	This attribute is used with %NL80211_CMD_TRIGGER_SCAN and
+ *	%NL80211_CMD_FRAME commands.
+ *
+ * @NL80211_ATTR_TDLS_ACTION: Low level TDLS action code (e.g. link setup
+ *	request, link setup confirm, link teardown, etc.). Values are
+ *	described in the TDLS (802.11z) specification.
+ * @NL80211_ATTR_TDLS_DIALOG_TOKEN: Non-zero token for uniquely identifying a
+ *	TDLS conversation between two devices.
+ * @NL80211_ATTR_TDLS_OPERATION: High level TDLS operation; see
+ *	&enum nl80211_tdls_operation, represented as a u8.
+ * @NL80211_ATTR_TDLS_SUPPORT: A flag indicating the device can operate
+ *	as a TDLS peer sta.
+ * @NL80211_ATTR_TDLS_EXTERNAL_SETUP: The TDLS discovery/setup and teardown
+ *	procedures should be performed by sending TDLS packets via
+ *	%NL80211_CMD_TDLS_MGMT. Otherwise %NL80211_CMD_TDLS_OPER should be
+ *	used for asking the driver to perform a TDLS operation.
+ *
+ * @NL80211_ATTR_DEVICE_AP_SME: This u32 attribute may be listed for devices
+ *	that have AP support to indicate that they have the AP SME integrated
+ *	with support for the features listed in this attribute, see
+ *	&enum nl80211_ap_sme_features.
+ *
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
  */
@@ -1658,76 +1582,6 @@ enum nl80211_attrs {
 	NL80211_ATTR_TDLS_EXTERNAL_SETUP,
 
 	NL80211_ATTR_DEVICE_AP_SME,
-
-	NL80211_ATTR_DONT_WAIT_FOR_ACK,
-
-	NL80211_ATTR_FEATURE_FLAGS,
-
-	NL80211_ATTR_PROBE_RESP_OFFLOAD,
-
-	NL80211_ATTR_PROBE_RESP,
-
-	NL80211_ATTR_DFS_REGION,
-
-	NL80211_ATTR_DISABLE_HT,
-	NL80211_ATTR_HT_CAPABILITY_MASK,
-
-	NL80211_ATTR_NOACK_MAP,
-
-	NL80211_ATTR_INACTIVITY_TIMEOUT,
-
-	NL80211_ATTR_RX_SIGNAL_DBM,
-
-	NL80211_ATTR_BG_SCAN_PERIOD,
-
-	NL80211_ATTR_WDEV,
-
-	NL80211_ATTR_USER_REG_HINT_TYPE,
-
-	NL80211_ATTR_CONN_FAILED_REASON,
-
-	NL80211_ATTR_SAE_DATA,
-
-	NL80211_ATTR_VHT_CAPABILITY,
-
-	NL80211_ATTR_SCAN_FLAGS,
-
-	NL80211_ATTR_CHANNEL_WIDTH,
-	NL80211_ATTR_CENTER_FREQ1,
-	NL80211_ATTR_CENTER_FREQ2,
-
-	NL80211_ATTR_P2P_CTWINDOW,
-	NL80211_ATTR_P2P_OPPPS,
-
-	NL80211_ATTR_LOCAL_MESH_POWER_MODE,
-
-	NL80211_ATTR_ACL_POLICY,
-
-	NL80211_ATTR_MAC_ADDRS,
-
-	NL80211_ATTR_MAC_ACL_MAX,
-
-	NL80211_ATTR_RADAR_EVENT,
-
-	NL80211_ATTR_EXT_CAPA,
-	NL80211_ATTR_EXT_CAPA_MASK,
-
-	NL80211_ATTR_STA_CAPABILITY,
-	NL80211_ATTR_STA_EXT_CAPABILITY,
-
-	NL80211_ATTR_PROTOCOL_FEATURES,
-	NL80211_ATTR_SPLIT_WIPHY_DUMP,
-
-	NL80211_ATTR_DISABLE_VHT,
-	NL80211_ATTR_VHT_CAPABILITY_MASK,
-
-	NL80211_ATTR_MDID,
-	NL80211_ATTR_IE_RIC,
-
-	NL80211_ATTR_CRIT_PROT_ID,
-	NL80211_ATTR_MAX_CRIT_PROT_DURATION,
-
-	NL80211_ATTR_PEER_AID,
 
 	/* add attributes here, update the policy in nl80211.c */
 
@@ -3106,90 +2960,5 @@ enum nl80211_tdls_operation {
 enum nl80211_ap_sme_features {
 };
  */
-
-/**
- * enum nl80211_feature_flags - device/driver features
- * @NL80211_FEATURE_SK_TX_STATUS: This driver supports reflecting back
- *	TX status to the socket error queue when requested with the
- *	socket option.
- * @NL80211_FEATURE_HT_IBSS: This driver supports IBSS with HT datarates.
- * @NL80211_FEATURE_INACTIVITY_TIMER: This driver takes care of freeing up
- *	the connected inactive stations in AP mode.
- */
-enum nl80211_feature_flags {
-	NL80211_FEATURE_SK_TX_STATUS	= 1 << 0,
-	NL80211_FEATURE_HT_IBSS		= 1 << 1,
-	NL80211_FEATURE_INACTIVITY_TIMER = 1 << 2,
-};
-
-/**
- * enum nl80211_probe_resp_offload_support_attr - optional supported
- *	protocols for probe-response offloading by the driver/FW.
- *	To be used with the %NL80211_ATTR_PROBE_RESP_OFFLOAD attribute.
- *	Each enum value represents a bit in the bitmap of supported
- *	protocols. Typically a subset of probe-requests belonging to a
- *	supported protocol will be excluded from offload and uploaded
- *	to the host.
- *
- * @NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS: Support for WPS ver. 1
- * @NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS2: Support for WPS ver. 2
- * @NL80211_PROBE_RESP_OFFLOAD_SUPPORT_P2P: Support for P2P
- * @NL80211_PROBE_RESP_OFFLOAD_SUPPORT_80211U: Support for 802.11u
- */
-enum nl80211_probe_resp_offload_support_attr {
-	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS =	1<<0,
-	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS2 =	1<<1,
-	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_P2P =	1<<2,
-	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_80211U =	1<<3,
-};
-
-/**
- * enum nl80211_connect_failed_reason - connection request failed reasons
- * @NL80211_CONN_FAIL_MAX_CLIENTS: Maximum number of clients that can be
- *  handled by the AP is reached.
- * @NL80211_CONN_FAIL_BLOCKED_CLIENT: Connection request is rejected due to ACL.
- */
-enum nl80211_connect_failed_reason {
-	NL80211_CONN_FAIL_MAX_CLIENTS,
-	NL80211_CONN_FAIL_BLOCKED_CLIENT,
-};
-
-/**
- * enum nl80211_acl_policy - access control policy
- *
- * Access control policy is applied on a MAC list set by
- * %NL80211_CMD_START_AP and %NL80211_CMD_SET_MAC_ACL, to
- * be used with %NL80211_ATTR_ACL_POLICY.
- *
- * @NL80211_ACL_POLICY_ACCEPT_UNLESS_LISTED: Deny stations which are
- *   listed in ACL, i.e. allow all the stations which are not listed
- *  in ACL to authenticate.
- * @NL80211_ACL_POLICY_DENY_UNLESS_LISTED: Allow the stations which are listed
- *    in ACL, i.e. deny all the stations which are not listed in ACL.
- */
-enum nl80211_acl_policy {
-	NL80211_ACL_POLICY_ACCEPT_UNLESS_LISTED,
-	NL80211_ACL_POLICY_DENY_UNLESS_LISTED,
-};
-/**
- * enum nl80211_crit_proto_id - nl80211 critical protocol identifiers
- *
- * @NL80211_CRIT_PROTO_UNSPEC: protocol unspecified.
- * @NL80211_CRIT_PROTO_DHCP: BOOTP or DHCPv6 protocol.
- * @NL80211_CRIT_PROTO_EAPOL: EAPOL protocol.
- * @NL80211_CRIT_PROTO_APIPA: APIPA protocol.
- * @NUM_NL80211_CRIT_PROTO: must be kept last.
- */
-enum nl80211_crit_proto_id {
-	NL80211_CRIT_PROTO_UNSPEC,
-	NL80211_CRIT_PROTO_DHCP,
-	NL80211_CRIT_PROTO_EAPOL,
-	NL80211_CRIT_PROTO_APIPA,
-	/* add other protocols before this one */
-	NUM_NL80211_CRIT_PROTO
-};
-
-/* maximum duration for critical protocol measures */
-#define NL80211_CRIT_PROTO_MAX_DURATION		5000 /* msec */
 
 #endif /* __LINUX_NL80211_H */

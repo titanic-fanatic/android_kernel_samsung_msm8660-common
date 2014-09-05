@@ -15920,7 +15920,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 
 static ssize_t color_enhance_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%i\n", mdp_pdata.color_enhance_enabled);
+	return sprintf(buf, "%i\n", mdp_pdata.mdp_color_enhance_enabled);
 }
 
 static ssize_t color_enhance_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -15928,7 +15928,7 @@ static ssize_t color_enhance_store(struct device *dev, struct device_attribute *
 	u32 value;
 	if (sscanf(buf, "%i", &value) == 1)
 	{
-		mdp_pdata.color_enhance_enabled = value;
+		mdp_pdata.mdp_color_enhance_enabled = value;
 	}
 	return size;
 }

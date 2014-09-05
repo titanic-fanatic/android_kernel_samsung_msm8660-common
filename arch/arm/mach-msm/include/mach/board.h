@@ -352,6 +352,7 @@ struct msm_panel_common_pdata {
 	char cont_splash_enabled;
 	char mdp_iommu_split_domain;
 	int (*mdp_gamma)(void);
+    int (*mdp_color_enhance_enabled);
 };
 
 

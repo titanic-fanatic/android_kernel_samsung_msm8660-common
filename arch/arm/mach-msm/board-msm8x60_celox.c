@@ -15914,7 +15914,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.mdp_gamma = celox_mdp_gamma,
-    .mdp_color_enhance_enabled = 0;
+    .mdp_color_enhance_enabled = 0,
 	.mdp_iommu_split_domain = 0,
 };
 

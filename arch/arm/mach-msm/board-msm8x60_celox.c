@@ -44,6 +44,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/i2c/bq27520.h>
 #include <linux/memblock.h>
+#include <linux/miscdevice.h>
 
 #ifdef CONFIG_TOUCHSCREEN_MELFAS
 #define TOUCHSCREEN_IRQ 		125  

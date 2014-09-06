@@ -44,6 +44,7 @@
 #endif
 #include "mipi_dsi.h"
 #include <linux/fcntl.h>
+#include <linux/fs.h>      // Needed by filp
 
 uint32 mdp4_extn_disp;
 
@@ -2258,63 +2259,86 @@ void mdp4_hw_init(void)
 
 #endif
 
-
-
 #define VALUE_MAX 35
 static int ColorEnhanceRead()
 {
+    struct file *f;
+    mm_segment_t fs;
+    int i;
     char path[VALUE_MAX];
-    char value_str[2];
+    char buf[1];
     int enabled = 0;
-    int fd;
-    int ret;
+    //int fd;
+    //int ret;
 
     snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
-    fd = open(path, O_RDONLY);
-    if (-1 == fd) {
+    //fd = open(path, O_RDONLY);
+    //if (-1 == fd) {
         //fprintf(stderr, "Failed to open color_enhance for reading!\n");
-        pr_debug("%s: Failed to open color_enhance for reading!\n", __func__);
-        return(-1);
-    }
+    //    pr_debug("%s: Failed to open color_enhance for reading!\n", __func__);
+    //    return(-1);
+    //}
 
-    if (-1 == read(fd, value_str, 2)) {
+    //if (-1 == read(fd, buf, 2)) {
         //fprintf(stderr, "Failed to read value!\n");
-        pr_debug("%s: Failed to read value!\n", __func__);
-        return(-1);
-    }
+    //    pr_debug("%s: Failed to read value!\n", __func__);
+    //    return(-1);
+    //}
 
-    close(fd);
+    //close(fd);
 
     //atoi(value_str, 10, enabled);
-    ret = kstrtoint(value_str, 10, &enabled);
-	if (ret < 0)
-		return(ret);
+    //ret = kstrtoint(buf, 10, &enabled);
+	//if (ret < 0)
+	//	return(ret);
+    
+    // Init the buffer with 0
+    for(i=0;i<1;i++)
+        buf[i] = 0;
+
+    f = filp_open(path, O_RDONLY, 0);
+    if(f == NULL)
+        printk(KERN_ALERT "filp_open error! Cannot open path: %s\n", path);
+    else{
+        // Get current segment descriptor
+        fs = get_fs();
+        // Set segment descriptor associated to kernel space
+        set_fs(get_ds());
+        // Read the file
+        f->f_op->read(f, buf, 1, &f->f_pos);
+        // Restore segment descriptor
+        set_fs(fs);
+        // See what we read from file
+        printk(KERN_INFO "buf: %s\n",buf);
+        enabled = kstrtoint(buf, 10, &enabled);
+    }
+    filp_close(f,NULL);
     
     return(enabled);
 }
 
 static int ColorEnhanceWrite()
 {
-    static const char s_values_str[] = "0";
+    //static const char s_values_str[] = "0";
 
-    char path[VALUE_MAX];
-    int fd;
+    //char path[VALUE_MAX];
+    //int fd;
 
-    snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
-    fd = open(path, O_WRONLY);
-    if (-1 == fd) {
+    //snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
+    //fd = open(path, O_WRONLY);
+    //if (-1 == fd) {
         //fprintf(stderr, "Failed to open color_enhance for writing!\n");
-        pr_debug("%s: Failed to open color_enhance for writing!\n", __func__);
-        return(-1);
-    }
+    //    pr_debug("%s: Failed to open color_enhance for writing!\n", __func__);
+    //    return(-1);
+    //}
 
-    if (1 != write(fd, &s_values_str[0], 1)) {
+    //if (1 != write(fd, &s_values_str[0], 1)) {
         //fprintf(stderr, "Failed to write value!\n");
-        pr_debug("%s: Failed to write value!\n", __func__);
-        return(-1);
-    }
+    //    pr_debug("%s: Failed to write value!\n", __func__);
+    //    return(-1);
+    //}
 
-    close(fd);
+    //close(fd);
     return(0);
 }
 

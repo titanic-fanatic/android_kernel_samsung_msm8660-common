@@ -2286,7 +2286,7 @@ static int ColorEnhanceRead()
     close(fd);
 
     //atoi(value_str, 10, enabled);
-    ret = kstrtoint(buf, 10, &enabled);
+    ret = kstrtoint(value_str, 10, &enabled);
 	if (ret < 0)
 		return(ret);
     

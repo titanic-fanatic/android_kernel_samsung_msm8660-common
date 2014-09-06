@@ -2257,6 +2257,55 @@ void mdp4_hw_init(void)
 
 #endif
 
+
+
+#define VALUE_MAX 35
+static int ColorEnhanceRead()
+{
+    char path[VALUE_MAX];
+    char value_str[2];
+    int fd;
+
+    snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
+    fd = open(path, O_RDONLY);
+    if (-1 == fd) {
+        fprintf(stderr, "Failed to open color_enhance for reading!\n");
+        return(-1);
+    }
+
+    if (-1 == read(fd, value_str, 2)) {
+        fprintf(stderr, "Failed to read value!\n");
+        return(-1);
+    }
+
+    close(fd);
+
+    return(atoi(value_str));
+}
+
+static int ColorEnhanceWrite()
+{
+    static const char s_values_str[] = "0";
+
+    char path[VALUE_MAX];
+    int fd;
+
+    snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
+    fd = open(path, O_WRONLY);
+    if (-1 == fd) {
+        fprintf(stderr, "Failed to open color_enhance for writing!\n");
+        return(-1);
+    }
+
+    if (1 != write(fd, &s_values_str[0], 1)) {
+        fprintf(stderr, "Failed to write value!\n");
+        return(-1);
+    }
+
+    close(fd);
+    return(0);
+}
+
 static int mdp_bus_scale_restore_request(void);
 static struct msm_panel_common_pdata *mdp_pdata;
 
@@ -2315,9 +2364,11 @@ static int mdp_on(struct platform_device *pdev)
 		vsync_cntrl.dev = mfd->fbi->dev;
 
 	mdp_histogram_ctrl_all(TRUE);
+    
+    mdp_pdata->mdp_color_enhance_enabled = ColorEnhanceRead();
 
-  if (mdp_pdata->mdp_gamma && mdp_pdata->mdp_color_enhance_enabled)
-    mdp_pdata->mdp_gamma();
+    if (mdp_pdata->mdp_gamma && mdp_pdata->mdp_color_enhance_enabled)
+        mdp_pdata->mdp_gamma();
 
 	if (ret == 0)
 		ret = panel_next_late_init(pdev);

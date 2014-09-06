@@ -16943,7 +16943,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	brcm_wlan_init();
 #endif
 vibrator_device_gpio_init();
-color_enhance_device_init();
 
 #if defined(CONFIG_SEC_DEBUG) && defined(CONFIG_SEC_MISC)	
 	{

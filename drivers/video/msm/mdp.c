@@ -44,7 +44,6 @@
 #endif
 #include "mipi_dsi.h"
 #include <linux/fcntl.h>
-#include <linux/stdlib.h>
 
 uint32 mdp4_extn_disp;
 
@@ -2266,7 +2265,9 @@ static int ColorEnhanceRead()
 {
     char path[VALUE_MAX];
     char value_str[2];
+    int enabled = 0;
     int fd;
+    int ret;
 
     snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
     fd = open(path, O_RDONLY);
@@ -2284,7 +2285,12 @@ static int ColorEnhanceRead()
 
     close(fd);
 
-    return(atoi(value_str));
+    //atoi(value_str, 10, enabled);
+    ret = kstrtoint(buf, 10, &enabled);
+	if (ret < 0)
+		return(ret);
+    
+    return(enabled);
 }
 
 static int ColorEnhanceWrite()

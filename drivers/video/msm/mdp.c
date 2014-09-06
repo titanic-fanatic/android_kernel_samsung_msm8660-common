@@ -2269,12 +2269,14 @@ static int ColorEnhanceRead()
     snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
     fd = open(path, O_RDONLY);
     if (-1 == fd) {
-        fprintf(stderr, "Failed to open color_enhance for reading!\n");
+        //fprintf(stderr, "Failed to open color_enhance for reading!\n");
+        pr_debug("%s: Failed to open color_enhance for reading!\n", __func__);
         return(-1);
     }
 
     if (-1 == read(fd, value_str, 2)) {
-        fprintf(stderr, "Failed to read value!\n");
+        //fprintf(stderr, "Failed to read value!\n");
+        pr_debug("%s: Failed to read value!\n", __func__);
         return(-1);
     }
 
@@ -2293,12 +2295,14 @@ static int ColorEnhanceWrite()
     snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
     fd = open(path, O_WRONLY);
     if (-1 == fd) {
-        fprintf(stderr, "Failed to open color_enhance for writing!\n");
+        //fprintf(stderr, "Failed to open color_enhance for writing!\n");
+        pr_debug("%s: Failed to open color_enhance for writing!\n", __func__);
         return(-1);
     }
 
     if (1 != write(fd, &s_values_str[0], 1)) {
-        fprintf(stderr, "Failed to write value!\n");
+        //fprintf(stderr, "Failed to write value!\n");
+        pr_debug("%s: Failed to write value!\n", __func__);
         return(-1);
     }
 

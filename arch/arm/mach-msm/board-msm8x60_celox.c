@@ -15933,31 +15933,59 @@ static ssize_t color_enhance_store(struct device *dev, struct device_attribute *
 	return size;
 }
 
-static DEVICE_ATTR(color_enhance, S_IRUGO | S_IWUGO, color_enhance_show, color_enhance_store);
+static DEVICE_ATTR(color_enhance_enabled, 0666, color_enhance_show, color_enhance_store);
 
-static struct attribute *color_enhance_attributes[] = {
-	&dev_attr_color_enhance.attr,
-	NULL
-};
+int color_enhance_open(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
 
-static struct attribute_group color_enhance_group = {
-	.attrs = color_enhance_attributes,
+ssize_t color_enhance_read(struct file * filp, char *buf, size_t count, loff_t * f_pos)
+{
+	char data[3] = { 0, };
+
+	get_touchkey_firmware(data);
+	put_user(data[1], buf);
+
+	return 1;
+}
+
+int color_enhance_release(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+struct file_operations color_enhance_fops = {
+	.owner = THIS_MODULE,
+	.read = color_enhance_read,
+	.open = color_enhance_open,
+	.release = color_enhance_release,
 };
 
 static struct miscdevice color_enhance_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "color_enhance",
+    .fops = &color_enhance_fops,
 };
 
-static int __init color_enhance_device_init(void)
+static int color_enhance_device_init(void)
 {
-	misc_register(&color_enhance_device);
-	if (sysfs_create_group(&color_enhance_device.this_device->kobj, &color_enhance_group) < 0)
-	{
-		printk("%s sysfs_create_group fail\n", __FUNCTION__);
-		pr_err("Failed to create sysfs group for device (%s)!\n", color_enhance_device.name);
+    int ret = 0;
+    
+    ret = misc_register(&color_enhance_device);
+	if (ret) {
+		printk("%s misc_register fail\n", __FUNCTION__);
+        goto fail;
 	}
-	return 0;
+    
+    ret = device_create_file(color_enhance_device.this_device, &dev_attr_color_enhance_enabled);
+	if (ret < 0)
+		printk("%s device_create_file fail\n", __FUNCTION__);
+		pr_err("Failed to create sysfs for device (%s)!\n", dev_attr_color_enhance_enabled.attr.name);
+        goto fail;
+        
+fail:
+    return ret;
 }
 
 #if defined(CONFIG_FB_MSM_MIPI_S6E8AA0_HD720_PANEL)

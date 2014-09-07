@@ -106,6 +106,9 @@ struct device *mdnie_dev;
 struct class *mdnieset_outdoor_class;
 struct device *switch_mdnieset_outdoor_dev;
 
+static struct class *mdp_color_enhance_class;
+struct device *mdp_color_enhance_dev;
+
 Lcd_mDNIe_UI current_mDNIe_Mode = mDNIe_UI_MODE; /* mDNIe Set Status Checking Value.*/
 Lcd_mDNIe_Negative current_Negative_Mode = mDNIe_NEGATIVE_OFF;
 

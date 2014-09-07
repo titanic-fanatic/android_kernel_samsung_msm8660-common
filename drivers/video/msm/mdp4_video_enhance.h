@@ -52,5 +52,7 @@
 #define SIG_MDNIE_BROWSER_TONE3	42
 #endif
  void init_mdnie_class(void);
+ extern int color_enhance_enabled;
+ void init_mdp_color_enhance_class(void);
 
 #endif // _MDP4_VIDEO_ENHANCE_H_

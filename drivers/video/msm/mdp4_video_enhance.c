@@ -892,8 +892,48 @@ static DEVICE_ATTR(negative, 0664,
 		   negative_show,
 		   negative_store);
 
+static ssize_t color_enhance_enabled_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+    int enabled = 0;
+    
+	DPRINT("called %s \n", __func__);
+
+	return sprintf(buf, "%u\n", enabled);
+}
+
+int color_enhance_enabled = 0;
+static ssize_t color_enhance_enabled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	DPRINT("[color enhance set] in color_enhance_enabled_store, input value = %d \n",value);
+
+	color_enhance_enabled = value;
+    
+	return size;
+}
+
+static DEVICE_ATTR(color_enhance_enabled, 0664, color_enhance_enabled_show, color_enhance_enabled_store);
+
 ////////////////]
 
+void init_mdp_color_enhance_class(void)
+{
+    mdp_color_enhance_class = class_create(THIS_MODULE, "mdp_color_enhance");
+	if (IS_ERR(mdp_color_enhance_class))
+		pr_err("Failed to create class(mdp_color_enhance_class)!\n");
+
+	mdp_color_enhance_dev = device_create(mdp_color_enhance_class, NULL, 0, NULL, "mdp_color_enhance");
+	if (IS_ERR(mdp_color_enhance_dev))
+		pr_err("Failed to create device(mdp_color_enhance)!\n");
+
+	if (device_create_file(mdp_color_enhance_dev, &dev_attr_color_enhance_enabled) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_color_enhance_enabled.attr.name);
+}
 
 void init_mdnie_class(void)
 {

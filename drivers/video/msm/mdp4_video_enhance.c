@@ -909,9 +909,9 @@ int color_enhance_enabled = 0;
 static ssize_t color_enhance_enabled_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
-	int value;
+	unsigned int value;
 
-	sscanf(buf, "%d", &value);
+	sscanf(buf, "%u\n", &value);
 
 	DPRINT("[color enhance set] in color_enhance_enabled_store, input value = %d \n",value);
 

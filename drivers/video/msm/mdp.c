@@ -2298,7 +2298,7 @@ static int ColorEnhanceRead()
 
     f = filp_open(path, O_RDONLY, 0);
     if(f == NULL)
-        pr_debug("%s: filp_open error! Cannot open path: %s\n", __func__, path);
+        printk(KERN_ALERT "filp_open error! Cannot open path: %s\n", path);
     else{
         // Get current segment descriptor
         fs = get_fs();
@@ -2309,7 +2309,7 @@ static int ColorEnhanceRead()
         // Restore segment descriptor
         set_fs(fs);
         // See what we read from file
-        pr_debug("buf: %s\n", buf);
+        printk(KERN_INFO "buf: %s\n",buf);
         enabled = kstrtoint(buf, 10, &enabled);
     }
     filp_close(f,NULL);

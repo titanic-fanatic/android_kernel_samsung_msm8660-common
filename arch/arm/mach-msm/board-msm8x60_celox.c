@@ -15913,52 +15913,8 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.mdp_gamma = celox_mdp_gamma,
-    .mdp_color_enhance_enabled = 0;
 	.mdp_iommu_split_domain = 0,
 };
-
-static ssize_t color_enhance_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%i\n", mdp_pdata.color_enhance_enabled);
-}
-
-static ssize_t color_enhance_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	u32 value;
-	if (sscanf(buf, "%i", &value) == 1)
-	{
-		mdp_pdata.color_enhance_enabled = value;
-	}
-	return size;
-}
-
-static DEVICE_ATTR(color_enhance, S_IRUGO | S_IWUGO, color_enhance_show, color_enhance_store);
-
-static struct attribute *color_enhance_attributes[] = {
-	&dev_attr_color_enhance.attr,
-	NULL
-};
-
-static struct attribute_group color_enhance_group = {
-	.attrs = color_enhance_attributes,
-};
-
-static struct miscdevice colour_enhance_device = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "color_enhance",
-};
-
-static int __init color_enhance_device_init(void)
-{
-	misc_register(&color_enhance_device);
-	if (sysfs_create_group(&color_enhance_device.this_device->kobj, &color_enhance_group) < 0)
-	{
-		printk("%s sysfs_create_group fail\n", __FUNCTION__);
-		pr_err("Failed to create sysfs group for device (%s)!\n", color_enhance_device.name);
-	}
-	return 0;
-}
-
 #if defined(CONFIG_FB_MSM_MIPI_S6E8AA0_HD720_PANEL)
 int mdp_core_clk_rate_table[] = {
 	85330000,
@@ -16984,7 +16940,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	brcm_wlan_init();
 #endif
 vibrator_device_gpio_init();
-color_enhance_device_init();
 
 #if defined(CONFIG_SEC_DEBUG) && defined(CONFIG_SEC_MISC)	
 	{

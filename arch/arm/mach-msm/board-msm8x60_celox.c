@@ -15944,7 +15944,7 @@ static struct attribute_group color_enhance_group = {
 	.attrs = color_enhance_attributes,
 };
 
-static struct miscdevice color_enhance_device = {
+static struct miscdevice colour_enhance_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "color_enhance",
 };

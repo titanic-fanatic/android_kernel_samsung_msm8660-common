@@ -41,7 +41,6 @@
 #include "msm_fb.h"
 #ifdef CONFIG_FB_MSM_MDP40
 #include "mdp4.h"
-#include "mdp4_video_enhance.h"
 #endif
 #include "mipi_dsi.h"
 #include <linux/fcntl.h>
@@ -2260,6 +2259,89 @@ void mdp4_hw_init(void)
 
 #endif
 
+#define VALUE_MAX 35
+static int ColorEnhanceRead()
+{
+    struct file *f;
+    mm_segment_t fs;
+    int i;
+    char path[VALUE_MAX];
+    char buf[1];
+    int enabled = 0;
+    //int fd;
+    //int ret;
+
+    snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
+    //fd = open(path, O_RDONLY);
+    //if (-1 == fd) {
+        //fprintf(stderr, "Failed to open color_enhance for reading!\n");
+    //    pr_debug("%s: Failed to open color_enhance for reading!\n", __func__);
+    //    return(-1);
+    //}
+
+    //if (-1 == read(fd, buf, 2)) {
+        //fprintf(stderr, "Failed to read value!\n");
+    //    pr_debug("%s: Failed to read value!\n", __func__);
+    //    return(-1);
+    //}
+
+    //close(fd);
+
+    //atoi(value_str, 10, enabled);
+    //ret = kstrtoint(buf, 10, &enabled);
+	//if (ret < 0)
+	//	return(ret);
+    
+    // Init the buffer with 0
+    for(i=0;i<1;i++)
+        buf[i] = 0;
+
+    f = filp_open(path, O_RDONLY, 0);
+    if(f == NULL)
+        pr_debug("%s: filp_open error! Cannot open path: %s\n", __func__, path);
+    else{
+        // Get current segment descriptor
+        fs = get_fs();
+        // Set segment descriptor associated to kernel space
+        set_fs(get_ds());
+        // Read the file
+        f->f_op->read(f, buf, 1, &f->f_pos);
+        // Restore segment descriptor
+        set_fs(fs);
+        // See what we read from file
+        pr_debug("buf: %s\n", buf);
+        enabled = kstrtoint(buf, 10, &enabled);
+    }
+    filp_close(f,NULL);
+    
+    return(enabled);
+}
+
+static int ColorEnhanceWrite()
+{
+    //static const char s_values_str[] = "0";
+
+    //char path[VALUE_MAX];
+    //int fd;
+
+    //snprintf(path, VALUE_MAX, "/sys/class/lcd/panel/color_enhance", "");
+    //fd = open(path, O_WRONLY);
+    //if (-1 == fd) {
+        //fprintf(stderr, "Failed to open color_enhance for writing!\n");
+    //    pr_debug("%s: Failed to open color_enhance for writing!\n", __func__);
+    //    return(-1);
+    //}
+
+    //if (1 != write(fd, &s_values_str[0], 1)) {
+        //fprintf(stderr, "Failed to write value!\n");
+    //    pr_debug("%s: Failed to write value!\n", __func__);
+    //    return(-1);
+    //}
+
+    //close(fd);
+    return(0);
+}
+
 static int mdp_bus_scale_restore_request(void);
 static struct msm_panel_common_pdata *mdp_pdata;
 
@@ -2319,7 +2401,7 @@ static int mdp_on(struct platform_device *pdev)
 
 	mdp_histogram_ctrl_all(TRUE);
     
-    mdp_pdata->mdp_color_enhance_enabled = color_enhance_enabled;
+    mdp_pdata->mdp_color_enhance_enabled = ColorEnhanceRead();
 
     if (mdp_pdata->mdp_gamma && mdp_pdata->mdp_color_enhance_enabled)
         mdp_pdata->mdp_gamma();

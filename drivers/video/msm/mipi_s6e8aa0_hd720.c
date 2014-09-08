@@ -1454,6 +1454,46 @@ device_attribute *attr, const char *buf, size_t size)
 static DEVICE_ATTR(power_reduce, 0664,
 		power_reduce_show, power_reduce_store);
 
+int color_enhance = 0;
+static ssize_t color_enhance_show(struct device *dev, struct 
+device_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", color_enhance);
+}
+
+static ssize_t color_enhance_store(struct device *dev, struct 
+device_attribute *attr, const char *buf, size_t size)
+{
+    unsigned int data;
+
+	if(sscanf(buf, "%u\n", &data) == 1) {
+
+		pr_debug("%s: %u \n", __FUNCTION__, data);
+
+		if (data == 1) {
+			color_enhance = 1;
+			pr_debug("%s: color enhancement enabled\n", __FUNCTION__);
+		}
+
+		else if (data == 0) {
+			color_enhance = 0;
+			pr_debug("%s: color enhancement disabled\n", __FUNCTION__);
+		}
+
+		else
+			pr_err("%s: invalid input %u\n", __FUNCTION__,
+					data);
+	}
+
+	else
+		pr_err("%s: invalid input\n", __FUNCTION__);
+
+	return size;
+}
+
+static DEVICE_ATTR(color_enhance, 0664,
+		color_enhance_show, color_enhance_store);
+
 static ssize_t lcd_type_show(struct device *dev, struct 
 device_attribute *attr, char *buf)
 {
@@ -1882,6 +1922,10 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	if (ret < 0)
 		dev_err(&(pdev->dev), "failed to add sysfs entries\n");
 
+	ret = device_create_file(sysfs_panel_dev, &dev_attr_color_enhance);
+	if (ret < 0)
+		dev_err(&(pdev->dev), "failed to add sysfs entries\n");
+
 	ret = device_create_file(sysfs_panel_dev, &dev_attr_lcd_type);  
 	if (ret < 0)
 		dev_err(&(pdev->dev), "failed to add sysfs entries\n");
@@ -1906,10 +1950,6 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 
 	// mdnie sysfs create
 	init_mdnie_class();
-    
-    // mdp_color_enhance sysfs create
-    init_mdp_color_enhance_class();
-    
 #ifdef MAPPING_TBL_AUTO_BRIGHTNESS
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
     if(1){

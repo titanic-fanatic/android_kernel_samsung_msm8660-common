@@ -460,13 +460,6 @@ config FB_MSM_LCDC_LD9040_WVGA_PANEL
 	---help---
 	  Support for LCDC LD9040 WVGA (480x800) panel
 
-config COLOR_CALIBRATION
-    bool "Color Calibration"
-    depends on FB_MSM_LCDC_LD9040_WVGA_PANEL
-    default y
-    ---help---
-      Enables Gamma and Color Calibration control for the LD9040 panel.
-
 config FB_MSM_LCDC_S6E63M0_WVGA_PANEL
     depends on FB_MSM_LCDC_HW
     bool "LCDC S6B63M0 WVGA Panel"
@@ -669,6 +662,13 @@ config FB_MSM_MIPI_S6D6AA0_WXGA_PANEL
 config FB_MSM_MIPI_S6E8AA0_HD720_PANEL
 	bool "MIPI S6E8AA0_HD720 Panel"
 	select FB_MSM_MIPI_S6E8AA0_HD720_PT
+
+config COLOR_CALIBRATION
+    bool "Color Calibration"
+    depends on (FB_MSM_LCDC_LD9040_WVGA_PANEL || FB_MSM_MIPI_S6E8AA0_HD720_PANEL)
+    default y
+    ---help---
+      Enables Gamma and Color Calibration control for the LD9040 panel.
 	
 config FB_MSM_MIPI_S6E8AA0_WXGA_Q1_PANEL
 	bool "MIPI S6E8AA0)WXGA_Q1 Panel"

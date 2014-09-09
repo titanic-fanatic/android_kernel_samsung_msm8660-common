@@ -2055,7 +2055,7 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	msm_fb_add_device(pdev);
 	DPRINT("msm_fb_add_device -\n");
 	
-	#ifdef CONFIG_COLOR_CALIBRATION
+#ifdef CONFIG_COLOR_CALIBRATION
 	misc_register(&samoled_color_device);
 	if (sysfs_create_group(&samoled_color_device.this_device->kobj, &samoled_color_group) < 0)
 	{

@@ -2058,10 +2058,16 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	
 #ifdef CONFIG_COLOR_CALIBRATION
 	misc_register(&samoled_color_device);
-	if (sysfs_create_group(&samoled_color_device.this_device->kobj, &samoled_color_group) < 0)
+	ret = sysfs_create_group(&samoled_color_device.this_device->kobj, &samoled_color_group);
+	if (ret < 0)
 	{
 		printk("%s sysfs_create_group fail\n", __FUNCTION__);
 		pr_err("Failed to create sysfs group for device (%s)!\n", samoled_color_device.name);
+	}
+	else
+	{
+	    printk("%s sysfs_create_group success\n", __FUNCTION__);
+		pr_err("Successfully created sysfs group for device (%s)!\n", samoled_color_device.name);
 	}
 #endif
 

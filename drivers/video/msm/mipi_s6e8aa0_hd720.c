@@ -69,6 +69,11 @@ static char log_buffer[256] = {0,};
 
 #define NOT_AID (0)
 
+#ifdef CONFIG_COLOR_CALIBRATION
+int v1_offset[3] = {0, 0, 0};
+u32 color_adj[3] = {100000, 100000, 100000};
+#endif
+
 enum lcd_id_value {
 lcd_id_unknown = -1,
 lcd_id_a1_m3_line = 1,
@@ -1099,7 +1104,11 @@ static void lcd_gamma_smartDimming_apply( struct msm_fb_data_type *mfd, int srcG
 	if( gamma_lux > SmartDimming_CANDELA_UPPER_LIMIT ) gamma_lux = SmartDimming_CANDELA_UPPER_LIMIT;
 
 	for( i = SmartDimming_GammaUpdate_Pos; i < sizeof(GAMMA_SmartDimming_COND_SET); i++ ) 	GAMMA_SmartDimming_COND_SET[i] = 0;
-	calc_gamma_table(&(s6e8aa0_lcd.smart), gamma_lux, GAMMA_SmartDimming_COND_SET +SmartDimming_GammaUpdate_Pos);
+	calc_gamma_table(&(s6e8aa0_lcd.smart), gamma_lux, GAMMA_SmartDimming_COND_SET +SmartDimming_GammaUpdate_Pos
+#ifdef CONFIG_COLOR_CALIBRATION
+                         , v1_offset, color_adj
+#endif
+                         );
 
 #ifdef SmartDimming_16bitBugFix
 	if( gamma_lux > SmartDimming_CANDELA_UPPER_LIMIT /2 )
@@ -1122,7 +1131,6 @@ static void lcd_gamma_smartDimming_apply( struct msm_fb_data_type *mfd, int srcG
 	mipi_dsi_cmds_tx(&s6e8aa0_tx_buf, &s6e8aa0_gamma_update_cmd, 1);
 	LOG_ADD( " SDIMMING(%d=%dcd)", srcGamma, gamma_lux );
 }
-
 
 static void lcd_gamma_ctl(struct msm_fb_data_type *mfd, struct lcd_setting *lcd)
 {
@@ -1165,6 +1173,29 @@ static void lcd_gamma_ctl(struct msm_fb_data_type *mfd, struct lcd_setting *lcd)
 	return;
 
 }
+
+#ifdef CONFIG_COLOR_CALIBRATION
+void ColorGammaUpdate(void)
+{
+    int bl_level = pMFD->bl_level;
+	int gamma_level;
+
+	// brightness tuning
+	gamma_level = get_gamma_value_from_bl(bl_level);
+
+    if (lcd_state.display_on) {
+	    mutex_lock(&(s6e8aa0_lcd.lock));
+	    
+	    if (s6e8aa0_lcd.stored_gamma <= 0)
+            lcd_set_brightness(pMFD, gamma_level);
+        else
+            lcd_set_brightness(pMFD, s6e8aa0_lcd.stored_gamma);
+            
+        mutex_unlock(&(s6e8aa0_lcd.lock));
+    }
+
+}
+#endif
 
 static void lcd_set_brightness(struct msm_fb_data_type *mfd, int gamma_level)
 {
@@ -1776,6 +1807,162 @@ static DEVICE_ATTR(auto_brightness, 0664,
 
 #endif
 
+#ifdef CONFIG_COLOR_CALIBRATION
+
+static ssize_t red_multiplier_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", color_adj[0]);
+}
+
+static ssize_t red_multiplier_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	u32 value;
+	if (sscanf(buf, "%u", &value) == 1)
+	{
+	    if (value > 200000 || value < 0)
+		{
+			value = 100000;
+		}
+ 		
+		color_adj[0] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static ssize_t green_multiplier_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", color_adj[1]);
+}
+
+static ssize_t green_multiplier_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	u32 value;
+	if (sscanf(buf, "%u", &value) == 1)
+	{
+	    if (value > 200000 || value < 0)
+		{
+			value = 100000;
+		}
+ 		
+		color_adj[1] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static ssize_t blue_multiplier_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", color_adj[2]);
+}
+
+static ssize_t blue_multiplier_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	u32 value;
+	if (sscanf(buf, "%u", &value) == 1)
+	{
+	    if (value > 200000 || value < 0)
+		{
+			value = 100000;
+		}
+ 		
+		color_adj[2] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static ssize_t red_v1_offset_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%i\n", v1_offset[0]);
+}
+
+static ssize_t red_v1_offset_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+	if (sscanf(buf, "%i", &value) == 1)
+	{
+	    if (value > 20 || value < -20)
+		{
+			value = 0;
+		}
+		
+		v1_offset[0] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static ssize_t green_v1_offset_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%i\n", v1_offset[1]);
+}
+
+static ssize_t green_v1_offset_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+	if (sscanf(buf, "%i", &value) == 1)
+	{
+	    if (value > 20 || value < -20)
+		{
+			value = 0;
+		}
+		
+		v1_offset[1] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static ssize_t blue_v1_offset_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%i\n", v1_offset[2]);
+}
+
+static ssize_t blue_v1_offset_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+	if (sscanf(buf, "%i", &value) == 1)
+	{
+	    if (value > 20 || value < -20)
+		{
+			value = 0;
+		}
+		
+		v1_offset[2] = value;
+		ColorGammaUpdate();
+	}
+	return size;
+}
+
+static DEVICE_ATTR(red_v1_offset, S_IRUGO | S_IWUGO, red_v1_offset_show, red_v1_offset_store);
+static DEVICE_ATTR(green_v1_offset, S_IRUGO | S_IWUGO, green_v1_offset_show, green_v1_offset_store);
+static DEVICE_ATTR(blue_v1_offset, S_IRUGO | S_IWUGO, blue_v1_offset_show, blue_v1_offset_store);
+static DEVICE_ATTR(red_multiplier, S_IRUGO | S_IWUGO, red_multiplier_show, red_multiplier_store);
+static DEVICE_ATTR(green_multiplier, S_IRUGO | S_IWUGO, green_multiplier_show, green_multiplier_store);
+static DEVICE_ATTR(blue_multiplier, S_IRUGO | S_IWUGO, blue_multiplier_show, blue_multiplier_store);
+
+
+static struct attribute *samoled_color_attributes[] = {
+	&dev_attr_red_v1_offset.attr,
+	&dev_attr_green_v1_offset.attr,
+	&dev_attr_blue_v1_offset.attr,
+	&dev_attr_red_multiplier.attr,
+	&dev_attr_green_multiplier.attr,
+	&dev_attr_blue_multiplier.attr,
+	NULL
+};
+
+static struct attribute_group samoled_color_group = {
+	.attrs = samoled_color_attributes,
+};
+
+static struct miscdevice samoled_color_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "samoled_color",
+};
+#endif
+
 /////////////////]
 
 
@@ -1867,6 +2054,15 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	DPRINT("msm_fb_add_device +\n");
 	msm_fb_add_device(pdev);
 	DPRINT("msm_fb_add_device -\n");
+	
+	#ifdef CONFIG_COLOR_CALIBRATION
+	misc_register(&samoled_color_device);
+	if (sysfs_create_group(&samoled_color_device.this_device->kobj, &samoled_color_group) < 0)
+	{
+		printk("%s sysfs_create_group fail\n", __FUNCTION__);
+		pr_err("Failed to create sysfs group for device (%s)!\n", samoled_color_device.name);
+	}
+#endif
 
 /////////////[ sysfs
     sysfs_lcd_class = class_create(THIS_MODULE, "lcd");

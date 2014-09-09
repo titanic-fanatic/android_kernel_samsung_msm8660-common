@@ -113,7 +113,11 @@ struct str_smart_dim{
 
 int init_table_info(struct str_smart_dim *smart, unsigned char const * srcGammaTable);
 u8 calc_voltage_table(struct str_smart_dim *smart, const u8 *mtp);
-u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[]);
+u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[]
+#ifdef CONFIG_COLOR_CALIBRATION
+                     , int *v1_offset , u32 *color_adj
+#endif
+                    );
 
 
 #endif

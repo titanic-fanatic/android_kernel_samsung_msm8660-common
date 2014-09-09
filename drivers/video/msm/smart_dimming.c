@@ -695,11 +695,18 @@ const u32 calc_v255_reg(int ci, u32 dv[CI_MAX][IV_MAX])
 }
 
 
-u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[])
+u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[]
+#ifdef CONFIG_COLOR_CALIBRATION
+                     , int *v1_offset , u32 *color_adj
+#endif
+                    )
 {
     u32 i,c;
     u32 temp;
     u32 lidx;
+#ifdef CONFIG_COLOR_CALIBRATION
+    u32 gv_temp;
+#endif
     u32 dv[CI_MAX][IV_MAX];
     u16 gamma[CI_MAX][IV_MAX] = {{0, },};
     u16 offset;
@@ -720,16 +727,29 @@ u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[])
     
     
     for(i=IV_15;i<IV_MAX;i++){
+#ifdef CONFIG_COLOR_CALIBRATION
+        for(c=CI_RED;c<CI_MAX;c++){
+            gv_temp = (color_adj[c] * gv)/100000;
+            temp = smart->g22_tbl[dv_value[i]] * gv_temp;
+            lidx = lookup_vtbl_idx(smart, temp);
+            dv[c][i] = smart->ve[lidx].v[c];
+        }
+#else
         temp = smart->g22_tbl[dv_value[i]] * gv;
         lidx = lookup_vtbl_idx(smart, temp);
         for(c=CI_RED;c<CI_MAX;c++){
             dv[c][i] = smart->ve[lidx].v[c];
         }
+#endif
     }
 
     // for IV1 does not calculate value just use default gamma value (IV1)
     for(c=CI_RED;c<CI_MAX;c++){
+#ifdef CONFIG_COLOR_CALIBRATION
+        gamma[c][IV_1] = smart->default_gamma[IV_TABLE_MAX * c + IV_MAX -IV_1] + ((v1_offset[c] * (int)smart->default_gamma[IV_TABLE_MAX * c + IV_MAX -IV_1]) / 100);;
+#else
         gamma[c][IV_1] = (u16)smart->default_gamma[c];
+#endif
     }
         
     for(i=IV_15;i<IV_MAX;i++){

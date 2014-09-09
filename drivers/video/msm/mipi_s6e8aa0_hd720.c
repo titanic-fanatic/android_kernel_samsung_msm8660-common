@@ -1951,7 +1951,7 @@ static struct attribute *samoled_color_attributes[] = {
 	&dev_attr_red_multiplier.attr,
 	&dev_attr_green_multiplier.attr,
 	&dev_attr_blue_multiplier.attr,
-	NULL
+	NULL,
 };
 
 static struct attribute_group samoled_color_group = {
@@ -2057,7 +2057,21 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	DPRINT("msm_fb_add_device -\n");
 	
 #ifdef CONFIG_COLOR_CALIBRATION
-	misc_register(&samoled_color_device);
+    printk("printk: ENTERING CONFIG_COLOR_CALIBRATION (%s)\n", __FUNCTION__);
+	pr_err("pr_err: ENTERING CONFIG_COLOR_CALIBRATION (%s)!\n", samoled_color_device.name);
+	
+	ret = misc_register(&samoled_color_device);
+	if (IS_ERR(ret))
+	{
+	    printk("%s misc_register fail\n", __FUNCTION__);
+		pr_err("Failed to register misc device (%s)!\n", samoled_color_device.name);
+	}
+	else
+	{
+	    printk("%s misc_register succeeded\n", __FUNCTION__);
+		pr_err("Successfully registered misc device (%s)!\n", samoled_color_device.name);
+	}
+	
 	ret = sysfs_create_group(&samoled_color_device.this_device->kobj, &samoled_color_group);
 	if (ret < 0)
 	{

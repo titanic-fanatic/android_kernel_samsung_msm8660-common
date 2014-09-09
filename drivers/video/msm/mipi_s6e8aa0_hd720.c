@@ -331,7 +331,7 @@ static struct dsi_cmd_desc s6e8aa0_display_on_before_gamma_cmds[] = {
 };
 
 static struct dsi_cmd_desc s6e8aa0_display_on_after_gamma_cmds[] = {
-	// warning : Don't insert delay time. BrightnessChange in this cmds cannot be apply.
+	// warning : Dont insert delay time. BrightnessChange in this cmds cannot be apply.
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(gamma_update_cmd), gamma_update_cmd},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(display_on), display_on},
 };

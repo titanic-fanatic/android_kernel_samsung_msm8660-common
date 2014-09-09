@@ -20,6 +20,7 @@
 #include "mipi_dsi.h"
 #include "mipi_s6e8aa0_hd720.h"
 #include "mipi_s6e8aa0_hd720_seq.h"
+#include <linux/miscdevice.h>
 #include "mdp4_video_enhance.h"
 #include "smart_dimming.h"
 

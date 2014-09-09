@@ -1175,29 +1175,6 @@ static void lcd_gamma_ctl(struct msm_fb_data_type *mfd, struct lcd_setting *lcd)
 
 }
 
-#ifdef CONFIG_COLOR_CALIBRATION
-void ColorGammaUpdate(void)
-{
-    int bl_level = pMFD->bl_level;
-	int gamma_level;
-
-	// brightness tuning
-	gamma_level = get_gamma_value_from_bl(bl_level);
-
-    if (lcd_state.display_on) {
-	    mutex_lock(&(s6e8aa0_lcd.lock));
-	    
-	    if (s6e8aa0_lcd.stored_gamma <= 0)
-            lcd_set_brightness(pMFD, gamma_level);
-        else
-            lcd_set_brightness(pMFD, s6e8aa0_lcd.stored_gamma);
-            
-        mutex_unlock(&(s6e8aa0_lcd.lock));
-    }
-
-}
-#endif
-
 static void lcd_set_brightness(struct msm_fb_data_type *mfd, int gamma_level)
 {
 	//TODO: lock
@@ -1269,6 +1246,29 @@ static int get_gamma_value_from_bl(int bl_value )// same as Seine, Celox
 
 	return gamma_value;
 }
+
+#ifdef CONFIG_COLOR_CALIBRATION
+void ColorGammaUpdate(void)
+{
+    int bl_level = pMFD->bl_level;
+	int gamma_level;
+
+	// brightness tuning
+	gamma_level = get_gamma_value_from_bl(bl_level);
+
+    if (s6e8aa0_lcd.lcd_state.display_on) {
+	    mutex_lock(&(s6e8aa0_lcd.lock));
+	    
+	    if (s6e8aa0_lcd.stored_gamma <= 0)
+            lcd_set_brightness(pMFD, gamma_level);
+        else
+            lcd_set_brightness(pMFD, s6e8aa0_lcd.stored_gamma);
+            
+        mutex_unlock(&(s6e8aa0_lcd.lock));
+    }
+
+}
+#endif
 
 static void set_backlight(struct msm_fb_data_type *mfd)
 {	

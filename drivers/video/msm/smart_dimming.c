@@ -746,7 +746,9 @@ u32 calc_gamma_table(struct str_smart_dim *smart, u32 gv, u8 result[]
     // for IV1 does not calculate value just use default gamma value (IV1)
     for(c=CI_RED;c<CI_MAX;c++){
 #ifdef CONFIG_COLOR_CALIBRATION
-        gamma[c][IV_1] = smart->default_gamma[IV_TABLE_MAX * c + IV_MAX -IV_1] + ((v1_offset[c] * (int)smart->default_gamma[IV_TABLE_MAX * c + IV_MAX -IV_1]) / 100);;
+        gamma[c][IV_1] = smart->default_gamma[c] + ((v1_offset[c] * (int)smart->default_gamma[c]) / 100);
+        if(gamma[c][IV_1] > 140)
+            gamma[c][IV_1] = 140;
 #else
         gamma[c][IV_1] = (u16)smart->default_gamma[c];
 #endif

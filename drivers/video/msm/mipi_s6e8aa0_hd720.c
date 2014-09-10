@@ -1134,10 +1134,22 @@ static void lcd_gamma_smartDimming_apply( struct msm_fb_data_type *mfd, int srcG
 }
 
 #ifdef CONFIG_COLOR_CALIBRATION
-static int s6e8aa0_adj_gamma_table(int bl)
+static int s6e8aa0_adj_gamma_table(int srcGamma)
 {
-	int gamma_lux = bl;
+	int gamma_lux;
+	int i;
+	
+#ifdef MAPPING_TBL_AUTO_BRIGHTNESS
+    gamma_lux = candela_table[srcGamma];
+#else
+    gamma_lux = s6e8aa0_lcd.lcd_brightness_table[srcGamma].lux;
 
+#endif
+
+
+	if( gamma_lux > SmartDimming_CANDELA_UPPER_LIMIT ) gamma_lux = SmartDimming_CANDELA_UPPER_LIMIT;
+
+	for( i = SmartDimming_GammaUpdate_Pos; i < sizeof(GAMMA_SmartDimming_COND_SET); i++ ) 	GAMMA_SmartDimming_COND_SET[i] = 0;
 	calc_gamma_table(&(s6e8aa0_lcd.smart), gamma_lux, GAMMA_SmartDimming_COND_SET +SmartDimming_GammaUpdate_Pos, v1_offset, color_adj);
 
 	return 0;

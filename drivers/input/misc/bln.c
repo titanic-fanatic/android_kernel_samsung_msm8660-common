@@ -424,12 +424,6 @@ void register_bln_implementation(struct bln_implementation *imp)
 }
 EXPORT_SYMBOL(register_bln_implementation);
 
-void cancel_bln_activity(void)
-{
-	bln_led_notification_enable(false);
-}
-EXPORT_SYMBOL(cancel_bln_activity);
-
 static void blink_callback(struct work_struct *blink_work)
 {
 	uint32_t elapsed_time_sec;

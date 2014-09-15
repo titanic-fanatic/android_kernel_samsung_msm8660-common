@@ -626,8 +626,8 @@ static irqreturn_t touchkey_interrupt(int irq, void *dummy)  // ks 79 - threaded
 			printk(KERN_DEBUG "touchkey pressed but don't send event because touch is pressed. \n");
 			set_touchkey_debug('P');
 		} else {
-			//if ((data[0] & KEYCODE_BIT) == 2) {	// if back key is pressed, release multitouch
-			//}
+			if ((data[0] & KEYCODE_BIT) == 2) {	// if back key is pressed, release multitouch
+			}
 			input_report_key(touchkey_driver->input_dev, touchkey_keycode[data[0] & KEYCODE_BIT], 1);
 			touchkey_pressed |= (1 << (data[0] & KEYCODE_BIT));
 			input_sync(touchkey_driver->input_dev);
@@ -851,20 +851,12 @@ static void sec_touchkey_early_resume(struct early_suspend *h)
 #if defined (CONFIG_EUR_MODEL_GT_I9210) || defined(CONFIG_USA_MODEL_SGH_I577) || defined(CONFIG_CAN_MODEL_SGH_I577R) || defined (CONFIG_USA_MODEL_SGH_T769) || defined (CONFIG_USA_MODEL_SGH_T989)
  	int ret =0;
 #endif
-        mutex_lock(&touchkey_driver->mutex);
 
 	set_touchkey_debug('R');
 	printk(KERN_DEBUG "[TKEY] sec_touchkey_early_resume\n");
 
-#if defined(CONFIG_GENERIC_BLN)
-	if (touchkey_enable == -3) {
-		cancel_bln_activity();
-	} else
-#endif
-
 	if (touchkey_enable < 0) {
 		printk("[TKEY] %s touchkey_enable: %d\n", __FUNCTION__, touchkey_enable);
-                mutex_unlock(&touchkey_driver->mutex);
 		return;
 	}
 
@@ -1213,7 +1205,7 @@ static int i2c_touchkey_probe(struct i2c_client *client, const struct i2c_device
     INIT_DELAYED_WORK(&touch_resume_work, touchkey_resume_func);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-    //	touchkey_driver->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING + 1;
+    touchkey_driver->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 10;
     touchkey_driver->early_suspend.suspend = sec_touchkey_early_suspend;
     touchkey_driver->early_suspend.resume = sec_touchkey_early_resume;
     register_early_suspend(&touchkey_driver->early_suspend);

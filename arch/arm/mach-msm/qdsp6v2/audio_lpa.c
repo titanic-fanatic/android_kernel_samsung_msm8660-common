@@ -46,8 +46,7 @@
 #include <linux/fs.h>
 
 #define MAX_BUF 4
-#define BUFSZ (655360)
-
+#define BUFSZ (524288)
 
 #define AUDDEC_DEC_PCM 0
 

@@ -4088,27 +4088,19 @@ static void __init msm8x60_init_dsps(void)
 #define MSM_SMI_BASE            0x38000000
 #define MSM_SMI_SIZE            0x4000000
 
-#ifndef CONFIG_SEC_KERNEL_REBASE_FOR_PMEM_OPTIMIZATION
-#define MSM_PMEM_ADSP_SIZE         0x4200000
-#else
-#define MSM_PMEM_ADSP_BASE         0x40400000
-#define MSM_PMEM_ADSP_SIZE         0x02900000
-#endif
-
-#define MSM_RAM_CONSOLE_BASE    0x7D100000
+#define MSM_RAM_CONSOLE_BASE    0x77800000
 #define MSM_RAM_CONSOLE_SIZE    SZ_1M
 
-#define MSM_ION_SF_SIZE		0x2900000
-#define MSM_ION_CAMERA_SIZE	0xA00000
+#define MSM_ION_SF_SIZE		0x4000000
+#define MSM_ION_CAMERA_SIZE	0x1000000
 #define MSM_ION_MM_FW_SIZE	0x200000
-#define MSM_ION_MM_SIZE		0x3300000
+#define MSM_ION_MM_SIZE		0x3D00000
 #define MSM_ION_MFC_SIZE	0x100000
 #define MSM_ION_AUDIO_SIZE	0x4CF000
 
 #define MSM_ION_MM_FW_BASE	MSM_SMI_BASE
 #define MSM_ION_MM_BASE		0x38200000
-#define MSM_ION_MFC_BASE	0x3B500000
-#define MSM_ION_CAMERA_BASE     0x3B600000
+#define MSM_ION_MFC_BASE	0x3BF00000
 
 static struct resource msm_fb_resources[] = {
 	{
@@ -4202,23 +4194,6 @@ static struct platform_device msm_fb_device = {
 	.num_resources     = ARRAY_SIZE(msm_fb_resources),
 	.resource          = msm_fb_resources,
 	.dev.platform_data = &msm_fb_pdata,
-};
-
-static struct android_pmem_platform_data android_pmem_adsp_pdata = {
-	.name = "pmem_adsp",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-#ifdef CONFIG_SEC_KERNEL_REBASE_FOR_PMEM_OPTIMIZATION
-	.memory_type = MEMTYPE_PMEM_ADSP,
-#else
-	.memory_type = MEMTYPE_EBI1,
-#endif
-};
-
-static struct platform_device android_pmem_adsp_device = {
-	.name = "android_pmem",
-	.id = 2,
-	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
 
 #define PMEM_BUS_WIDTH(_bw) \
@@ -9680,9 +9655,6 @@ static struct ion_platform_data ion_pdata = {
 			.id	= ION_CAMERA_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
 			.name	= ION_CAMERA_HEAP_NAME,
-#ifdef CONFIG_SEC_KERNEL_REBASE_FOR_PMEM_OPTIMIZATION
-			.base = MSM_PMEM_ADSP_BASE, // should be physical addr
-#endif
 			.size	= MSM_ION_CAMERA_SIZE,
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = &co_ion_pdata,
@@ -9706,20 +9678,12 @@ static struct platform_device ion_dev = {
 };
 #endif
 
-
 static struct memtype_reserve msm8x60_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 		.start	=	MSM_SMI_BASE,
 		.limit	=	MSM_SMI_SIZE,
 		.flags	=	MEMTYPE_FLAGS_FIXED,
 	},
-#ifdef CONFIG_SEC_KERNEL_REBASE_FOR_PMEM_OPTIMIZATION
-	[MEMTYPE_PMEM_ADSP] = {
-		.start	=	MSM_PMEM_ADSP_BASE,
-		.limit	=	MSM_PMEM_ADSP_SIZE,
-		.flags	=	MEMTYPE_FLAGS_FIXED,
-	},
-#endif
 	[MEMTYPE_EBI0] = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
@@ -9730,6 +9694,7 @@ static struct memtype_reserve msm8x60_reserve_table[] __initdata = {
 
 static void reserve_ion_memory(void)
 {
+	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_CAMERA_SIZE;
 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_SF_SIZE;
 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_AUDIO_SIZE;
 }

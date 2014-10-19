@@ -108,8 +108,11 @@ static DEFINE_PER_CPU(struct cpu_freq, cpu_freq_info);
 static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq)
 {
 	int ret = 0;
+	int saved_sched_policy = -EINVAL;
+	int saved_sched_rt_prio = -EINVAL;
 	struct cpufreq_freqs freqs;
 	struct cpu_freq *limit = &per_cpu(cpu_freq_info, policy->cpu);
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
 
 	if (limit->limits_init) {
 		if (new_freq > limit->allowed_max) {

@@ -226,6 +226,12 @@ static int system_suspend_handler(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static DEFINE_MUTEX(cpu_hotplug_driver_mutex);
+
+int cpu_hotplug_driver_test_lock(void)
+{
+	return mutex_trylock(&cpu_hotplug_driver_mutex);
+}
 
 static ssize_t hotplug_disable_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)

@@ -14,11 +14,6 @@ enum rwsem_waiter_type {
 	RWSEM_WAITING_FOR_READ
 };
 
-enum rwsem_waiter_type {
-	RWSEM_WAITING_FOR_WRITE,
-	RWSEM_WAITING_FOR_READ
-};
-
 struct rwsem_waiter {
 	struct list_head list;
 	struct task_struct *task;

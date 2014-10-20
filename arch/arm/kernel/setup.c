@@ -947,8 +947,7 @@ static int __init topology_init(void)
 
 	for_each_possible_cpu(cpu) {
 		struct cpuinfo_arm *cpuinfo = &per_cpu(cpu_data, cpu);
-		if (cpu)
-			cpuinfo->cpu.hotpluggable = 1;
+		cpuinfo->cpu.hotpluggable = 1;
 		register_cpu(&cpuinfo->cpu, cpu);
 	}
 

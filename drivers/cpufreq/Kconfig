@@ -327,16 +327,6 @@ config CPU_FREQ_SAMPLING_LATENCY_MULTIPLIER
           Sampling latency rate multiplied by the cpu switch latency.
           Affects governor polling.
 
-config SEC_DVFS
-	bool "DVFS job"
-	default n
-	depends on CPU_FREQ
-
-config SEC_DVFS_UNI
-	bool "DVFS job for Uni Processer"
-	default n
-	depends on SEC_DVFS
-
 menu "x86 CPU frequency scaling drivers"
 depends on X86
 source "drivers/cpufreq/Kconfig.x86"

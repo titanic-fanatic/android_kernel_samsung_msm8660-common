@@ -991,6 +991,8 @@ static int lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 	pMFD = mfd;
+	
+	mipi_S6E8AA0_panel_power(1);
 
 	lcd_on_seq( mfd );
 //	readCmd(mfd, DTYPE_GEN_READ, 0x05, 0x00, 8, 1 );
@@ -1044,6 +1046,8 @@ static int lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 	pMFD = mfd;
+	
+	mipi_S6E8AA0_panel_power(0);
 
 	lcd_off_seq(mfd);
 	DPRINT("%s -\n", __func__);

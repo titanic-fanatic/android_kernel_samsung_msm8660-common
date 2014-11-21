@@ -14224,7 +14224,7 @@ int mipi_S6E8AA0_panel_power(int enable)
 					printk("%s: %dmV undervolt is not a multiple of 25\n", __func__, panel_uv);
 					printk("%s: falling back to %dmV\n", __func__, (panel_voltage_after/1000));
 					panel_voltage = panel_voltage_after;
-					lcdc_panel_uv((3000000 - panel_voltage)/1000);
+					mipi_panel_uv((3000000 - panel_voltage)/1000);
 				} else {
 					ret = regulator_set_voltage(l19, panel_voltage, panel_voltage);
 					if (ret)

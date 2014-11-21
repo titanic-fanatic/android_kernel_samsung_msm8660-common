@@ -14121,8 +14121,6 @@ int mipi_S6E8AA0_panel_power(int enable)
     int LDO19_voltage = 3100000;
     int isUse_LDO17 = false;
     int LDO17_voltage = 2200000;
-    
-    cpu_boost_timeout(972, 7000);
 
 #if defined(CONFIG_USA_MODEL_SGH_I757)
 	if (get_hw_rev()>=6)	{

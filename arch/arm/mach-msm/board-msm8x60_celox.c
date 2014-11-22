@@ -14092,7 +14092,7 @@ static void mipi_S6E8AA0_panel_reset_down(void)
 	gpio_set_value(LCD_GPIO_RESET, 0);
 }
 
-static int panel_uv = 0;
+static int panel_uv = 500;
 module_param(panel_uv, int, 0664);
 
 void mipi_panel_uv(int panel_undervolt)

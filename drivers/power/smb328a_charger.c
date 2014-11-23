@@ -79,8 +79,7 @@ enum {
 	CHG_MODE_NONE,
 	CHG_MODE_AC,
 	CHG_MODE_USB,
-	CHG_MODE_MISC,
-	CHG_MODE_UNKNOWN
+	CHG_MODE_MISC
 };
 
 enum {
@@ -234,7 +233,7 @@ static void smb328a_set_command_reg(struct i2c_client *client)
 			__func__, reg, data);
 		if (chip->chg_mode == CHG_MODE_AC ||
 			chip->chg_mode == CHG_MODE_MISC ||
-			chip->chg_mode == CHG_MODE_UNKNOWN)
+			chip->chg_mode == CHG_MODE_USB)
 			data = 0xad;
 		else
 			data = 0xa9; /* usb */
@@ -273,12 +272,8 @@ static void smb328a_charger_function_conrol(struct i2c_client *client)
 		data = (u8)val;
 		dev_info(&client->dev, "%s : reg (0x%x) = 0x%x\n",
 			__func__, reg, data);
-		if (chip->chg_mode == CHG_MODE_AC) {
-#if defined(CONFIG_USA_MODEL_SGH_I717)
-			set_data = 0xB7; /* fast 1A */
-#else
-			set_data = 0x97; /* fast 900mA */
-#endif
+		if (chip->chg_mode == CHG_MODE_AC || chip->chg_mode == CHG_MODE_USB) {
+			set_data = 0xff; /* fast 1200mA+ */
 		} else if (chip->chg_mode == CHG_MODE_MISC) {
 			set_data = 0x57; /* fast 700mA */
 		} else
@@ -304,8 +299,8 @@ static void smb328a_charger_function_conrol(struct i2c_client *client)
 		data = (u8)val;
 		dev_info(&client->dev, "%s : reg (0x%x) = 0x%x\n",
 			__func__, reg, data);
-		if (chip->chg_mode == CHG_MODE_AC)
-			set_data = 0xb0; /* input 1A */
+		if (chip->chg_mode == CHG_MODE_AC || chip->chg_mode == CHG_MODE_USB)
+			set_data = 0xf8; /* input 1200mA+ */
 		else if (chip->chg_mode == CHG_MODE_MISC)
 			set_data = 0x50; /* input 700mA */
 		else
@@ -792,6 +787,8 @@ static int smb328a_set_top_off(struct i2c_client *client, int top_off)
 	return 0;
 }
 
+extern int cable_type;
+
 static int smb328a_set_charging_current(struct i2c_client *client,
 					int chg_current)
 {
@@ -804,14 +801,12 @@ static int smb328a_set_charging_current(struct i2c_client *client,
 
 	chip->chg_set_current = chg_current;
 
-	if (chg_current == 500) {
+	if (cable_type == 1) {
 		chip->chg_mode = CHG_MODE_USB;
-	} else if (chg_current == 900) {
+	} else if (cable_type == 2) {
 		chip->chg_mode = CHG_MODE_AC;
-	} else if (chg_current == 700) {
+	} else if (cable_type == 3) {
 		chip->chg_mode = CHG_MODE_MISC;
-	} else if (chg_current == 450) {
-		chip->chg_mode = CHG_MODE_UNKNOWN;
 	} else {
 		pr_err("%s : error! invalid setting current (%d)\n",
 			__func__, chg_current);
@@ -1294,10 +1289,8 @@ static int smb328a_enable_charging(struct i2c_client *client)
 					__func__, reg, data);
 		if (chip->chg_mode == CHG_MODE_AC ||
 			chip->chg_mode == CHG_MODE_MISC ||
-			chip->chg_mode == CHG_MODE_UNKNOWN)
+			chip->chg_mode == CHG_MODE_USB)
 			data = 0xad;
-		else if (chip->chg_mode == CHG_MODE_USB)
-			data = 0xa9;
 		else
 			data = 0xb9;
 		if (smb328a_write_reg(client, reg, data) < 0) {

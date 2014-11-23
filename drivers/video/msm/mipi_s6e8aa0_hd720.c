@@ -123,7 +123,6 @@ struct lcd_setting {
 	struct lcd_device		*ld;
 	struct backlight_device		*bd;
 	struct lcd_platform_data	*lcd_pd;
-	struct early_suspend    early_suspend;
 	struct lcd_state_type lcd_state;
 	char	lcd_id_buffer[LCD_ID_BUFFER_SIZE];
 	enum lcd_id_value	factory_id_line;
@@ -992,6 +991,8 @@ static int lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 	pMFD = mfd;
+	
+	mipi_S6E8AA0_panel_power(1);
 
 	lcd_on_seq( mfd );
 //	readCmd(mfd, DTYPE_GEN_READ, 0x05, 0x00, 8, 1 );
@@ -1037,12 +1038,6 @@ static int lcd_off(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 
-//#if def CONFIG_HAS_EARLYSUSPEND
-#if 0 // for recovery ICS (andre.b.kim)
-	DPRINT("%s : to be early_suspend. return.\n", __func__);
-	return 0;
-#endif 
-
     DPRINT("%s +\n", __func__);
 
 	mfd = platform_get_drvdata(pdev);
@@ -1051,6 +1046,8 @@ static int lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 	pMFD = mfd;
+	
+	mipi_S6E8AA0_panel_power(0);
 
 	lcd_off_seq(mfd);
 	DPRINT("%s -\n", __func__);
@@ -1990,29 +1987,6 @@ static struct miscdevice samoled_color_device = {
 
 /////////////////]
 
-
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void early_suspend(struct early_suspend *h) 
-{
-#ifdef CONFIG_S6E8AA0_HAS_EARLYSUSPEND
-	DPRINT("%s +\n", __func__);
-	lcd_off_seq(pMFD);
-	DPRINT("%s -\n", __func__);
-    return;
-#endif
-}
-
-static void late_resume(struct early_suspend *h) 
-{
-#ifdef CONFIG_S6E8AA0_HAS_EARLYSUSPEND
-	DPRINT("%s\n", __func__);
-	lcd_on_seq(pMFD);
-	return;
-#endif
-}
-#endif
-
 #ifdef FEATURE_BRIGHTNESS_DELAY_AFTER_WAKEUP
 static void sec_lcd_work_func(struct work_struct *work)
 {
@@ -2068,13 +2042,6 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 	s6e8aa0_lcd.auto_brightness = 0;
 #endif
 	mutex_init( &(s6e8aa0_lcd.lock) );
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	 s6e8aa0_lcd.early_suspend.suspend = early_suspend;
-	 s6e8aa0_lcd.early_suspend.resume = late_resume;
-	 s6e8aa0_lcd.early_suspend.level = LCD_OFF_GAMMA_VALUE;
-	 register_early_suspend(&s6e8aa0_lcd.early_suspend);
-#endif
 
 	DPRINT("msm_fb_add_device +\n");
 	msm_fb_add_device(pdev);

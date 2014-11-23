@@ -32,6 +32,11 @@
 
 #include <trace/events/power.h>
 
+#if defined(CONFIG_CPU_INPUT_BOOST) && defined(CONFIG_HOTPLUG_CPU)
+#include <linux/cpu_input_boost.h>
+extern struct boost_policy cpu_boost_policy[CONFIG_NR_CPUS];
+#endif
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -803,6 +808,15 @@ static int cpufreq_add_dev_policy(unsigned int cpu,
 		policy->max = per_cpu(cpufreq_policy_save, cpu).max;
 		policy->user_policy.max = policy->max;
 	}
+
+#ifdef CONFIG_CPU_INPUT_BOOST
+	if (cpu_boost_policy[cpu].boost_freq)
+		policy->min = cpu_boost_policy[cpu].boost_freq;
+	else if (cpu_boost_policy[cpu].saved_min)
+		policy->min = cpu_boost_policy[cpu].saved_min;
+	policy->user_policy.min = policy->min;
+#endif
+
 	pr_debug("Restoring CPU%d min %d and max %d\n",
 		cpu, policy->min, policy->max);
 #endif
@@ -1158,6 +1172,10 @@ static int __cpufreq_remove_dev(struct sys_device *sys_dev)
 			CPUFREQ_NAME_LEN);
 	per_cpu(cpufreq_policy_save, cpu).min = data->min;
 	per_cpu(cpufreq_policy_save, cpu).max = data->max;
+#ifdef CONFIG_CPU_INPUT_BOOST
+	if (!cpu_boost_policy[cpu].cpu_boosted)
+		cpu_boost_policy[cpu].saved_min = data->min;
+#endif
 	pr_debug("Saving CPU%d policy min %d and max %d\n",
 			cpu, data->min, data->max);
 #endif

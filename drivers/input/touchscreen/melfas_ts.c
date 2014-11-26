@@ -127,6 +127,9 @@ struct melfas_ts_data
 	struct early_suspend early_suspend;
 };
 
+static struct mutex lock;
+static bool lock_needs_init = 1;
+
 struct melfas_ts_data *ts_data;
 
 #ifdef SEC_TSP
@@ -176,6 +179,11 @@ static void tsp_ta_probe(int ta_status)
 		printk(KERN_ERR"[TSP] tsp_enabled is 0\n");
 		return;
 	}
+	
+	if (lock_needs_init) {
+		mutex_init(&lock);
+		lock_needs_init = 0;
+	}
 
 	write_buffer[0] = 0xB0;
 	write_buffer[1] = 0x11;
@@ -185,7 +193,9 @@ static void tsp_ta_probe(int ta_status)
 	else
 		write_buffer[2] = 0;
 
-	melfas_i2c_write(ts_data->client, (char *)write_buffer, 3);
+    mutex_lock(&lock);
+	melfas_i2c_write(t-s_data->client, (char *)write_buffer, 3);
+	mutex_unlock(&lock);
 }
 #endif
 
@@ -435,8 +445,10 @@ static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
 #if DEBUG_PRINT
 	printk(KERN_ERR "melfas_ts_irq_handler\n");
 #endif
-		
+    
+    mutex_lock(&lock);
 	melfas_ts_get_data(&ts->work);
+	mutex_unlock(&lock);
 	
 	return IRQ_HANDLED;
 }
@@ -524,7 +536,9 @@ static ssize_t set_tsp_threshold_mode_show(struct device *dev, struct device_att
 	struct melfas_ts_data *ts = dev_get_drvdata(dev);
 	u8 threshold;
 
+    mutex_lock(&lock);
 	melfas_i2c_read(ts->client, P5_THRESHOLD, 1, &threshold);
+	mutex_unlock(&lock);
 
 	return sprintf(buf, "%d\n", threshold);
 }
@@ -574,7 +588,9 @@ static ssize_t tsp_call_release_touch(struct device *dev, struct device_attribut
 //	struct melfas_ts_data *ts = dev_get_drvdata(dev);
 
 	printk(" %s is called\n", __func__);
+	mutex_lock(&lock);
 	TSP_reboot();
+	mutex_unlock(&lock);
 
 	return sprintf(buf,"0\n");
 }
@@ -622,7 +638,9 @@ ssize_t set_tsp_for_boost_store(struct device *dev, struct device_attribute *att
 		is_boost = 0;
 	}
 	printk(KERN_ERR "[TSP] set_tsp_for_boost_store() called. %s!\n", is_boost ? "On" : "Off" );
+	mutex_lock(&lock);
 	TSP_boost(ts, is_boost);
+	mutex_unlock(&lock);
 
 	return 1;
 }
@@ -666,6 +684,7 @@ static ssize_t set_tsp_module_on_show(struct device *dev, struct device_attribut
 	int ret;
 	struct melfas_ts_data *ts = dev_get_drvdata(dev);
 
+    mutex_lock(&lock);
 	ret = melfas_ts_resume(ts->client);
 	
 	if (ret  == 0)
@@ -674,6 +693,7 @@ static ssize_t set_tsp_module_on_show(struct device *dev, struct device_attribut
 		*buf = '0';
 
 	msleep(500);
+	mutex_unlock(&lock);
 	return 0;
 }
 
@@ -682,7 +702,9 @@ static ssize_t set_tsp_module_off_show(struct device *dev, struct device_attribu
 	int ret;
 	struct melfas_ts_data *ts = dev_get_drvdata(dev);
 
+    mutex_lock(&lock);
 	ret = melfas_ts_suspend(ts->client, PMSG_SUSPEND);
+	mutex_unlock(&lock);
 
 	if (ret  == 0)
 		*buf = '1';
@@ -700,6 +722,8 @@ static int check_debug_data(struct melfas_ts_data *ts)
 	int ret = 0;
 //	int gpio = ts->client->irq - NR_MSM_IRQS;
 
+    mutex_lock(&lock);
+    
 	disable_irq(ts->client->irq);
 
 	/* enter the debug mode */
@@ -732,6 +756,8 @@ static int check_debug_data(struct melfas_ts_data *ts)
 	pr_info("[TSP] Reading data end.\n");
 
 	enable_irq(ts->client->irq);
+	
+	mutex_unlock(&lock);
 
 	return ret;
 }
@@ -783,6 +809,9 @@ static int check_delta_data(struct melfas_ts_data *ts)
 	int sensing_line, exciting_line;
 	int gpio = ts->client->irq - NR_MSM_IRQS;
 	int ret = 0;
+	
+	mutex_lock(&lock);
+	
 	disable_irq(ts->client->irq);
 	/* enter the debug mode */
 	write_buffer[0] = 0xA0;
@@ -839,6 +868,8 @@ static int check_delta_data(struct melfas_ts_data *ts)
 	TSP_boost(ts, is_boost);
 #endif
 	enable_irq(ts->client->irq);
+	
+	mutex_unlock(&lock);
 
 	return ret;
 }
@@ -877,6 +908,8 @@ static void check_intensity_data(struct melfas_ts_data *ts)
 	u8 read_buffer[2];
 	int sensing_line, exciting_line;
 	int gpio = ts->client->irq - NR_MSM_IRQS;
+	
+	mutex_lock(&lock);
 
 	disable_irq(ts->client->irq);
 	if (0 == inspection_data[0]) {
@@ -929,6 +962,8 @@ static void check_intensity_data(struct melfas_ts_data *ts)
 		}
 	}
 	enable_irq(ts->client->irq);
+	
+	mutex_unlock(&lock);
 /*
 	pr_info("[TSP] lntensity data");
 	int i;
@@ -1479,17 +1514,21 @@ static int melfas_ts_resume(struct i2c_client *client)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void melfas_ts_early_suspend(struct early_suspend *h)
 {
+    mutex_lock(&lock);
 	struct melfas_ts_data *ts;
 
 	ts = container_of(h, struct melfas_ts_data, early_suspend);
 	melfas_ts_suspend(ts->client, PMSG_SUSPEND);
+	mutex_unlock(&lock);
 }
 
 static void melfas_ts_late_resume(struct early_suspend *h)
 {
+    mutex_lock(&lock);
 	struct melfas_ts_data *ts;
 	ts = container_of(h, struct melfas_ts_data, early_suspend);
 	melfas_ts_resume(ts->client);
+	mutex_unlock(&lock);
 }
 #endif
 

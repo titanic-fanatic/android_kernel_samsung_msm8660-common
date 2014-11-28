@@ -167,7 +167,7 @@ static void cpu_boost_input_event(struct input_handle *handle, unsigned int type
 {
 	u64 now;
 
-	if (!input_boost_freq || !input_boost_ms)
+	if (!input_boost_enabled || !input_boost_freq || !input_boost_ms)
 		return;
 
 	now = ktime_to_us(ktime_get());
@@ -254,12 +254,6 @@ static int __init cpu_boost_init(void)
 	struct boost_policy *b;
 	unsigned int cpu;
 	int ret;
-    
-    if (!input_boost_enabled) {
-		pr_err("CPU Input Boost is disabled\n");
-		ret = -EFAULT;
-		goto fail;
-    }
 
 	boost_wq = alloc_workqueue("cpu_input_boost_wq", WQ_HIGHPRI, 0);
 	if (!boost_wq) {

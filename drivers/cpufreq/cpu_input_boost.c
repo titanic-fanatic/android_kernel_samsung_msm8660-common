@@ -39,6 +39,9 @@ module_param(input_boost_freq, uint, 0644);
 static unsigned int input_boost_ms;
 module_param(input_boost_ms, uint, 0644);
 
+static int input_boost_enabled = 1;
+module_param(input_boost_enabled, int, 0664);
+
 static void cpu_boost_timeout(unsigned int freq, unsigned int duration_ms)
 {
 	struct boost_policy *b;
@@ -251,6 +254,12 @@ static int __init cpu_boost_init(void)
 	struct boost_policy *b;
 	unsigned int cpu;
 	int ret;
+    
+    if (!input_boost_enabled) {
+		pr_err("CPU Input Boost is disabled\n");
+		ret = -EFAULT;
+		goto fail;
+    }
 
 	boost_wq = alloc_workqueue("cpu_input_boost_wq", WQ_HIGHPRI, 0);
 	if (!boost_wq) {

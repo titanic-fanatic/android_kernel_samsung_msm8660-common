@@ -212,6 +212,7 @@ struct msm_fb_data_type {
 	boolean panel_driver_on;
 	int vsync_sysfs_created;
 	void *cpu_pm_hdl;
+	uint32 max_map_size;
 };
 
 struct msm_fb_backup_type {

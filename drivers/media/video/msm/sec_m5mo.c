@@ -67,7 +67,7 @@ static struct  m5mo_work_t *m5mo_sensorw;
 static struct  i2c_client *m5mo_client;
 static unsigned int config_csi;
 
-#define BATT_LOW_POWER 35
+#define BATT_LOW_POWER 60
 static struct delayed_work flash_work;
 static unsigned int snapshot_low_pwr = 0;
 static int req_flash_mode = 0;

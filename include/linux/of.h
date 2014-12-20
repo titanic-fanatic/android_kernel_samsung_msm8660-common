@@ -241,6 +241,33 @@ static inline bool of_have_populated_dt(void)
 	return false;
 }
 
+#define for_each_child_of_node(parent, child) \
+	while (0)
+
+static inline int of_device_is_compatible(const struct device_node *device,
+					  const char *name)
+{
+	return 0;
+}
+
+static inline struct property *of_find_property(const struct device_node *np,
+						const char *name,
+						int *lenp)
+{
+	return NULL;
+}
+
+static inline struct device_node *of_find_compatible_node(
+						struct device_node *from,
+						const char *type,
+						const char *compat)
+{
+	return NULL;
+}
+
+#define for_each_child_of_node(parent, child) \
+	while (0)
+
 static inline int of_property_read_u32_array(const struct device_node *np,
 				char *propname, u32 *out_values, size_t sz)
 {

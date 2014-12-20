@@ -237,6 +237,86 @@ enum {
 	CLK_DIS,
 	CLK_SUSPEND,
 };
+struct res_mmu_clk {
+	char *mmu_clk_name;
+	struct clk *mmu_clk;
+};
+
+static struct res_mmu_clk rot_mmu_clks[] = {
+	{"mdp_iommu_clk"}, {"rot_iommu_clk"},
+	{"vcodec_iommu0_clk"}, {"vcodec_iommu1_clk"},
+	{"smmu_iface_clk"}
+};
+
+u32 rotator_allocate_2pass_buf(struct rot_buf_type *rot_buf, int s_ndx)
+{
+	ion_phys_addr_t	addr, read_addr = 0;
+	size_t buffer_size;
+	unsigned long len;
+
+	if (!rot_buf) {
+		pr_err("Rot_buf NULL pointer %s %i", __func__, __LINE__);
+		return 0;
+	}
+
+	if (rot_buf->write_addr || !IS_ERR_OR_NULL(rot_buf->ihdl))
+		return 0;
+
+	buffer_size = roundup(1920 * 1088, SZ_4K);
+
+	if (!IS_ERR_OR_NULL(mrd->client)) {
+		pr_info("%s:%d ion based allocation\n",
+			__func__, __LINE__);
+		rot_buf->ihdl = ion_alloc(mrd->client, buffer_size, SZ_4K,
+			mrd->rot_session[s_ndx]->mem_hid,
+			mrd->rot_session[s_ndx]->mem_hid & ION_SECURE);
+		if (!IS_ERR_OR_NULL(rot_buf->ihdl)) {
+			if (rot_iommu_split_domain) {
+				if (ion_map_iommu(mrd->client, rot_buf->ihdl,
+					ROTATOR_SRC_DOMAIN, GEN_POOL, SZ_4K,
+					0, &read_addr, &len, 0, 0)) {
+					pr_err("ion_map_iommu() read failed\n");
+					return -ENOMEM;
+				}
+				if (mrd->rot_session[s_ndx]->mem_hid &
+								ION_SECURE) {
+					if (ion_phys(mrd->client, rot_buf->ihdl,
+						&addr, (size_t *)&len)) {
+						pr_err(
+						"%s:%d: ion_phys map failed\n",
+							 __func__, __LINE__);
+						return -ENOMEM;
+					}
+				} else {
+					if (ion_map_iommu(mrd->client,
+					    rot_buf->ihdl, ROTATOR_DST_DOMAIN,
+					    GEN_POOL, SZ_4K, 0, &addr, &len,
+					    0, 0)) {
+						pr_err("ion_map_iommu() failed\n");
+						return -ENOMEM;
+					}
+				}
+			} else {
+				if (ion_map_iommu(mrd->client, rot_buf->ihdl,
+					ROTATOR_SRC_DOMAIN, GEN_POOL, SZ_4K,
+					0, &addr, &len, 0, 0)) {
+					pr_err("ion_map_iommu() write failed\n");
+					return -ENOMEM;
+				}
+			}
+		} else {
+			pr_err("%s:%d: ion_alloc failed\n", __func__,
+				__LINE__);
+			return -ENOMEM;
+		}
+	} else {
+		addr = allocate_contiguous_memory_nomap(buffer_size,
+			mrd->rot_session[s_ndx]->mem_hid, 4);
+	}
+	if (addr) {
+		pr_info("allocating %d bytes at write=%x, read=%x for 2-pass\n",
+			buffer_size, (u32) addr, (u32) read_addr);
+		rot_buf->write_addr = addr;
 
 int msm_rotator_iommu_map_buf(int mem_id, unsigned char src,
 	unsigned long *start, unsigned long *len,
@@ -246,9 +326,9 @@ int msm_rotator_iommu_map_buf(int mem_id, unsigned char src,
 	if (!msm_rotator_dev->client)
 		return -EINVAL;
 
-	*pihdl = ion_import_fd(msm_rotator_dev->client, mem_id);
+	*pihdl = ion_import_dma_buf(msm_rotator_dev->client, mem_id);
 	if (IS_ERR_OR_NULL(*pihdl)) {
-		pr_err("ion_import_fd() failed\n");
+		pr_err("ion_import_dma_buf() failed\n");
 		return PTR_ERR(*pihdl);
 	}
 

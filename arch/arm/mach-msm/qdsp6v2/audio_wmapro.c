@@ -2,11 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
-<<<<<<< HEAD
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
-=======
  * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
->>>>>>> 50cd5ab... audio: Backport from CAF LA.AF.1.1_rb1.7
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and

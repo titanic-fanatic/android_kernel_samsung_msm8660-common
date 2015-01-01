@@ -10,12 +10,11 @@
  * GNU General Public License for more details.
  *
  */
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <mach/msm_memtypes.h>
 #include "vcd_ddl.h"
 #include "vcd_ddl_shared_mem.h"
 #include "vcd_res_tracker_api.h"
-
 
 struct ddl_context *ddl_get_context(void)
 {
@@ -288,7 +287,8 @@ u32 ddl_decoder_dpb_init(struct ddl_client_context *ddl)
 					memset(kernel_vaddr + luma_size,
 						0x80808080,
 						vcd_frm->alloc_len - luma_size);
-					if (vcd_frm->ion_flag == CACHED) {
+					if (vcd_frm->ion_flag ==
+						ION_FLAG_CACHED) {
 						msm_ion_do_cache_op(
 						ddl_context->video_ion_client,
 						vcd_frm->buff_ion_handle,

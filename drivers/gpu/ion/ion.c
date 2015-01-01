@@ -435,11 +435,7 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 		if (secure_allocation &&
 			(heap->type != (enum ion_heap_type) ION_HEAP_TYPE_CP))
 			continue;
-		trace_ion_alloc_buffer_start(client->name, heap->name, len,
-					     client->heap_mask, flags);
 		buffer = ion_buffer_create(heap, dev, len, align, flags);
-		trace_ion_alloc_buffer_end(client->name, heap->name, len,
-					   client->heap_mask, flags);
 		if (!IS_ERR_OR_NULL(buffer))
 			break;
 		if (dbg_str_idx < MAX_DBG_STR_LEN) {
@@ -460,15 +456,10 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	}
 	mutex_unlock(&dev->lock);
 
-	if (buffer == NULL) {
-		trace_ion_alloc_buffer_fail(client->name, dbg_str, len,
-					    client->heap_mask, flags, -ENODEV);
+	if (buffer == NULL)
 		return ERR_PTR(-ENODEV);
-	}
 
 	if (IS_ERR(buffer)) {
-		trace_ion_alloc_buffer_fail(client->name, dbg_str, len,
-					    client->heap_mask, flags, PTR_ERR(buffer));
 		pr_debug("ION is unable to allocate 0x%x bytes (alignment: "
 			 "0x%x) from heap(s) %sfor client %s with heap "
 			 "mask 0x%x\n",
@@ -791,24 +782,22 @@ int ion_map_iommu_by_force(struct ion_client *client, struct ion_handle *handle,
 	}
 
 	iommu_map = ion_iommu_lookup(buffer, domain_num, partition_num);
-	_ion_map(&buffer->iommu_map_cnt, &handle->iommu_map_cnt);
 
 	if (iommu_map) {
 		pr_warn("%s: handle %p is already mapped, unmapping first\n", __func__, handle);
-		_ion_unmap(&buffer->iommu_map_cnt, &handle->iommu_map_cnt);
 		kref_put(&iommu_map->ref, ion_iommu_release);
+		buffer->iommu_map_cnt--;
 	}
 
 	iommu_map = __ion_iommu_map(buffer, domain_num, partition_num,
 				    align, iova_length, flags, iova);
-	if (IS_ERR_OR_NULL(iommu_map)) {
-		_ion_unmap(&buffer->iommu_map_cnt,
-			   &handle->iommu_map_cnt);
-	} else {
+	if (!IS_ERR_OR_NULL(iommu_map)) {
 		iommu_map->flags = iommu_flags;
 
 		if (iommu_map->flags & ION_IOMMU_UNMAP_DELAYED)
 			kref_get(&iommu_map->ref);
+
+		buffer->iommu_map_cnt++;
 	}
 	*buffer_size = buffer->size;
 out:
@@ -843,8 +832,12 @@ void ion_unmap_iommu(struct ion_client *client, struct ion_handle *handle,
 	iommu_map = ion_iommu_lookup(buffer, domain_num, partition_num);
 
 	if (!iommu_map) {
-		WARN(1, "%s: (%d,%d) was never mapped for %p\n", __func__,
-				domain_num, partition_num, buffer);
+		if ((domain_num == 2) && (partition_num == 2))
+			pr_err("%s: (%d,%d) was never mapped for %p\n", __func__,
+					domain_num, partition_num, buffer);
+		else
+			WARN(1, "%s: (%d,%d) was never mapped for %p\n", __func__,
+					domain_num, partition_num, buffer);
 		goto out;
 	}
 

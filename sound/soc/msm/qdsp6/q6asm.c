@@ -1315,9 +1315,6 @@ int q6asm_open_read(struct audio_client *ac,
 		pr_err("Invalid format[%d]\n", format);
 		goto fail_cmd;
 	}
-	open.uMode = ASM_OPEN_READ_PERF_MODE_BIT;
-	open.bits_per_sample = PCM_BITS_PER_SAMPLE;
-	open.reserved = 0;
 	rc = apr_send_pkt(ac->apr, (uint32_t *) &open);
 	if (rc < 0) {
 		pr_err("open failed op[0x%x]rc[%d]\n", \

@@ -10,6 +10,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
+ * BLN hack oriignally by neldar for SGS. Adapted for SGSII by creams
+ * 			addapted for samsung-msm8660-common by Mr. X
  */
 
 #include <linux/module.h>
@@ -32,9 +34,7 @@
 #include <asm/uaccess.h>
 #include <linux/earlysuspend.h>
 #include <asm/io.h>
-#if defined(CONFIG_GENERIC_BLN)
-#include <linux/bln.h>
-#endif
+#include <linux/enhanced_bln.h>
 #ifdef CONFIG_CPU_FREQ
 //#include <mach/cpu-freq-v210.h>  //temp ks
 #endif
@@ -294,7 +294,7 @@ static int i2c_touchkey_write(u8 * val, unsigned int len)
 	int retry = 2;
 
 	if ((touchkey_driver == NULL || touchkey_enable != 1)
-#if defined(CONFIG_GENERIC_BLN)
+#if defined(CONFIG_ENHANCED_BLN)
 		&& (!touchkey_driver->is_bln_active)
 #endif
 	) {
@@ -857,16 +857,15 @@ static void sec_touchkey_early_resume(struct early_suspend *h)
 #if defined (CONFIG_EUR_MODEL_GT_I9210) || defined(CONFIG_USA_MODEL_SGH_I577) || defined(CONFIG_CAN_MODEL_SGH_I577R) || defined (CONFIG_USA_MODEL_SGH_T769) || defined (CONFIG_USA_MODEL_SGH_T989)
  	int ret =0;
 #endif
-        mutex_lock(&touchkey_driver->mutex);
 
 	set_touchkey_debug('R');
 	printk(KERN_DEBUG "[TKEY] sec_touchkey_early_resume\n");
-
 	if (touchkey_enable < 0) {
 		printk("[TKEY] %s touchkey_enable: %d\n", __FUNCTION__, touchkey_enable);
-                mutex_unlock(&touchkey_driver->mutex);
 		return;
 	}
+
+	mutex_lock(&touchkey_driver->mutex);
 
 #ifdef CONFIG_TOUCH_CYPRESS_SWEEP2WAKE
 	if (s2w_switch) {
@@ -1047,52 +1046,60 @@ if(touchled_cmd_reversed) {
 }
 #endif				// End of CONFIG_HAS_EARLYSUSPEND
 
-#if defined(CONFIG_GENERIC_BLN)
-static void cypress_touchkey_enable_backlight(void) {
-    signed char int_data[] ={0x10};
-    mutex_lock(&touchkey_driver->mutex);
-    i2c_touchkey_write(int_data, 1);
+#if defined(CONFIG_ENHANCED_BLN)
+static unsigned int req_state;
 
-    mutex_unlock(&touchkey_driver->mutex);
+static void cypress_touchkey_enable_backlight(void)
+{
+	signed char int_data[] ={0x10};
+
+	mutex_lock(&touchkey_driver->mutex);
+	i2c_touchkey_write(int_data, 1);
+	mutex_unlock(&touchkey_driver->mutex);
 }
 
-static void cypress_touchkey_disable_backlight(void) {
-    signed char int_data[] ={0x20};
-    mutex_lock(&touchkey_driver->mutex);
-    i2c_touchkey_write(int_data, 1);
+static void cypress_touchkey_disable_backlight(int bln_state)
+{
+	signed char int_data[] ={0x20};
 
-    mutex_unlock(&touchkey_driver->mutex);
+	/* don't turn off leds if userspace wants them on */
+	if ((bln_state == BLN_OFF) && req_state == 1) {
+		cypress_touchkey_enable_backlight();
+		return;
+	}
+
+	mutex_lock(&touchkey_driver->mutex);
+	i2c_touchkey_write(int_data, 1);
+	mutex_unlock(&touchkey_driver->mutex);
 }
 
-static bool cypress_touchkey_enable_led_notification(void) {
-    if (touchkey_enable)
-        return false;
+static void cypress_touchkey_enable_led_vdd(void)
+{
+	if (touchkey_enable)
+		return;
 
-    mutex_lock(&touchkey_driver->mutex);
-    tkey_vdd_enable(1);
-    msleep(50);
-    tkey_led_vdd_enable(1);
-
-    touchkey_driver->is_bln_active = true;
-    mutex_unlock(&touchkey_driver->mutex);
-    return true;
+	mutex_lock(&touchkey_driver->mutex);
+	tkey_vdd_enable(1);
+	msleep(50);
+	tkey_led_vdd_enable(1);
+	touchkey_driver->is_bln_active = true;
+	mutex_unlock(&touchkey_driver->mutex);
 }
 
-static void cypress_touchkey_disable_led_notification(void) {
-    mutex_lock(&touchkey_driver->mutex);
-
-    tkey_vdd_enable(0);
-    tkey_led_vdd_enable(0);
-
-    touchkey_driver->is_bln_active = false;
-    mutex_unlock(&touchkey_driver->mutex);
+static void cypress_touchkey_disable_led_vdd(void)
+{
+	mutex_lock(&touchkey_driver->mutex);
+	tkey_vdd_enable(0);
+	tkey_led_vdd_enable(0);
+	touchkey_driver->is_bln_active = false;
+	mutex_unlock(&touchkey_driver->mutex);
 }
 
 static struct bln_implementation cypress_touchkey_bln = {
-    .enable = cypress_touchkey_enable_led_notification,
-    .disable = cypress_touchkey_disable_led_notification,
-    .on = cypress_touchkey_enable_backlight,
-    .off = cypress_touchkey_disable_backlight,
+	.enable_led_reg = cypress_touchkey_enable_led_vdd,
+	.disable_led_reg = cypress_touchkey_disable_led_vdd,
+	.led_on = cypress_touchkey_enable_backlight,
+	.led_off = cypress_touchkey_disable_backlight,
 };
 #endif
 
@@ -1277,7 +1284,7 @@ if (get_hw_rev() >=0x02) {
 #endif
 	set_touchkey_debug('K');
 
-#if defined(CONFIG_GENERIC_BLN)
+#if defined(CONFIG_ENHANCED_BLN)
 	register_bln_implementation(&cypress_touchkey_bln);
 #endif
 
@@ -1500,16 +1507,18 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 	int int_data = 0;
 	int errnum = 0;
 
-	mutex_lock(&touchkey_driver->mutex);
+#ifdef CONFIG_ENHANCED_BLN
+	sscanf(buf, "%u", &req_state);
+#endif
 
 #if defined(CONFIG_KOR_MODEL_SHV_E160L)
 	if(touchkey_connected==0){
 		printk(KERN_ERR "[TKEY] led_control return connect_error\n");
-		goto unlock;
+		return size;
 		}
 	if( touchkey_downloading_status ){
 		printk(KERN_ERR "[TKEY] led_control return update_status_error or downloading now! \n");
-		goto unlock;
+		return size;
 	}
 #endif
 	if(buf != NULL){
@@ -1564,10 +1573,6 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 	} else
 		printk("touch_led_control Error\n");
 
-#if defined(CONFIG_KOR_MODEL_SHV_E160L)
-unlock:
-#endif
-	mutex_unlock(&touchkey_driver->mutex);
 	return size;
 }
 

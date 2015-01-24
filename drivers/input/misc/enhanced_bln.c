@@ -29,12 +29,14 @@
 #include <linux/wakelock.h>
 
 static struct bln_config {
+    unsigned int blink_enabled;
 	bool always_on;
 	unsigned int blink_control;
 	unsigned int blink_timeout_ms;
 	unsigned int off_ms;
 	unsigned int on_ms;
 } bln_conf = {
+    .blink_enabled = 0;
 	.always_on = false,
 	.blink_control = 0,
 	.blink_timeout_ms = 600000,
@@ -66,7 +68,7 @@ static void set_bln_blink(unsigned int bln_state)
 		}
 		break;
 	case BLN_ON:
-		if (!bln_conf.blink_control) {
+		if (bln_conf.blink_enabled && !bln_conf.blink_control) {
 			wake_lock(&bln_wake_lock);
 			bln_conf.blink_control = BLN_ON;
 			bln_start_time = ktime_to_ms(ktime_get());
@@ -84,7 +86,7 @@ static void bln_main(struct work_struct *work)
 	int blink_ms;
 	u64 now;
 
-	if (bln_conf.blink_control) {
+	if (bln_conf.blink_enabled && bln_conf.blink_control) {
 		if (blink_callback) {
 			blink_callback = false;
 			blink_ms = bln_conf.off_ms;
@@ -118,7 +120,7 @@ static void bln_early_suspend(struct early_suspend *h)
 	/* Resume always-on mode if screen is unlocked and then locked without
 	 * clearing the notification. Added 100ms delay to prevent races.
 	 */
-	if (bln_conf.always_on && !delayed_work_pending(&bln_main_work)) {
+	if (bln_conf.blink_enabled && bln_conf.always_on && !delayed_work_pending(&bln_main_work)) {
 		wake_lock(&bln_wake_lock);
 		schedule_delayed_work(&bln_main_work, msecs_to_jiffies(100));
 	}
@@ -141,6 +143,31 @@ void register_bln_implementation(struct bln_implementation *imp)
 }
 
 /**************************** SYSFS START ****************************/
+static ssize_t blink_enabled_write(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int data;
+	int ret = sscanf(buf, "%u", &data);
+
+	if (ret != 1)
+		return -EINVAL;
+
+	if (data)
+		pr_err("BLN implementation is enabled\n");
+    else
+        pr_err("BLN implementation is disabled\n");
+    
+    bln_conf.blink_enabled = data;
+
+	return size;
+}
+
+static ssize_t blink_enabled_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", bln_conf.blink_enabled);
+}
+
 static ssize_t blink_control_write(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -161,6 +188,12 @@ static ssize_t blink_control_write(struct device *dev,
 		set_bln_blink(BLN_OFF);
 
 	return size;
+}
+
+static ssize_t blink_control_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", bln_conf.blink_control);
 }
 
 static ssize_t blink_interval_ms_write(struct device *dev,
@@ -189,6 +222,12 @@ static ssize_t blink_interval_ms_write(struct device *dev,
 	return size;
 }
 
+static ssize_t blink_interval_ms_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u %u\n", bln_conf.on_ms, bln_conf.off_ms);
+}
+
 static ssize_t blink_timeout_ms_write(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -209,17 +248,21 @@ static ssize_t blink_timeout_ms_read(struct device *dev,
 	return sprintf(buf, "%u\n", bln_conf.blink_timeout_ms);
 }
 
+static DEVICE_ATTR(blink_enabled, S_IRUGO | S_IWUGO,
+		blink_enabled_read,
+		blink_enabled_write);
 static DEVICE_ATTR(blink_control, S_IRUGO | S_IWUGO,
-		NULL,
+		blink_control_read,
 		blink_control_write);
 static DEVICE_ATTR(blink_interval_ms, S_IRUGO | S_IWUGO,
-		NULL,
+		blink_interval_ms_read,
 		blink_interval_ms_write);
 static DEVICE_ATTR(blink_timeout_ms, S_IRUGO | S_IWUGO,
 		blink_timeout_ms_read,
 		blink_timeout_ms_write);
 
 static struct attribute *bln_attributes[] = {
+    &dev_attr_blink_enabled.attr,
 	&dev_attr_blink_control.attr,
 	&dev_attr_blink_interval_ms.attr,
 	&dev_attr_blink_timeout_ms.attr,

@@ -36,7 +36,7 @@ static struct bln_config {
 	unsigned int off_ms;
 	unsigned int on_ms;
 } bln_conf = {
-    .blink_enabled = 0;
+    .blink_enabled = 0,
 	.always_on = false,
 	.blink_control = 0,
 	.blink_timeout_ms = 600000,
